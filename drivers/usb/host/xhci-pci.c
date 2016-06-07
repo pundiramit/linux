@@ -733,6 +733,55 @@ static int renesas_fw_download_to_hw(struct pci_dev *pdev,
 	return 1;
 }
 
+static int renesas_check_if_fw_dl_is_needed(struct pci_dev *pdev)
+{
+	int err;
+	u8 fw_state;
+
+	/*
+	 * Only the uPD720201K8-711-BAC-A or uPD720202K8-711-BAA-A
+	 * are listed in R19UH0078EJ0500 Rev.5.00 as devices which
+	 * need a firmware in order to work.
+	 *
+	 *  - uPD720202 ES 2.0 sample & CS sample & Mass product, ID is 2.
+	 *  - uPD720201 ES 2.0 sample whose revision ID is 2.
+	 *  - uPD720201 ES 2.1 sample & CS sample & Mass product, ID is 3.
+	 */
+	if (!((pdev->vendor == PCI_VENDOR_ID_RENESAS) &&
+		((pdev->device == 0x0015 && pdev->revision == 0x02) ||
+		 (pdev->device == 0x0014 &&
+		  (pdev->revision == 0x02 || pdev->revision == 0x03)))))
+		return 0;
+
+	/*
+	 * Test if the firmware was uploaded and is running.
+	 * As most BIOSes will initialize the device for us.
+	 */
+	err = pci_read_config_byte(pdev, 0xf4, &fw_state);
+	if (err)
+		return pcibios_err_to_errno(err);
+
+	/* Check the "Result Code" Bits (6:4) and act accordingly */
+	switch (fw_state & 0x70) {
+	case 0: /* No result yet */
+		dev_err(&pdev->dev, "FW is not ready/loaded yet.");
+		return -ENODEV;
+
+	case BIT(4): /* Success, device should be working. */
+		dev_dbg(&pdev->dev, "FW is ready.");
+		return 0;
+
+	case BIT(5): /* Error State */
+		dev_err(&pdev->dev, "HW is in an error state.");
+		return -ENODEV;
+
+	default: /* All other states are marked as "Reserved states" */
+		dev_err(&pdev->dev, "HW is in an invalid state (%x).",
+			(fw_state & 0x70) >> 4);
+		return -EINVAL;
+	}
+}
+
 /* called during probe() after chip reset completes */
 static int xhci_pci_setup(struct usb_hcd *hcd)
 {
@@ -786,6 +835,11 @@ static int xhci_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	default:
 		return retval;
 	};
+
+	/* Check if this device is a RENESAS uPD720201/2 device. */
+	retval = renesas_check_if_fw_dl_is_needed(dev);
+	if (retval)
+		return retval;
 
 	driver = (struct hc_driver *)id->driver_data;
 
@@ -987,6 +1041,11 @@ static int xhci_pci_resume(struct usb_hcd *hcd, bool hibernated)
 
 	if (pdev->vendor == PCI_VENDOR_ID_INTEL)
 		usb_enable_intel_xhci_ports(pdev);
+
+	/* Check if this device is a RENESAS uPD720201/2 device. */
+	retval = renesas_check_if_fw_dl_is_needed(pdev);
+	if (retval)
+		return retval;
 
 	if (xhci->quirks & XHCI_SSIC_PORT_UNUSED)
 		xhci_ssic_port_unused_quirk(hcd, false);
