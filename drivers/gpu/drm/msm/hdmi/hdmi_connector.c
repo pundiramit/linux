@@ -213,6 +213,13 @@ int msm_hdmi_hpd_enable(struct drm_connector *connector)
 			HDMI_HPD_CTRL_ENABLE | hpd_ctrl);
 	spin_unlock_irqrestore(&hdmi->reg_lock, flags);
 
+	/*
+	 * wait for a bit so that HPD is sensed if there is a cable already
+	 * connected. Returning early will result in someone calling the
+	 * connnector func's detect() callback too early
+	 */
+	msleep(15);
+
 	return 0;
 
 fail:
