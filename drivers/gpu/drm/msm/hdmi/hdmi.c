@@ -28,6 +28,8 @@ void msm_hdmi_set_mode(struct hdmi *hdmi, bool power_on)
 		}
 	} else {
 		ctrl = HDMI_CTRL_HDMI;
+		if (hdmi->config->keep_ctrl_on)
+			ctrl |= HDMI_CTRL_ENABLE;
 	}
 
 	hdmi_write(hdmi, REG_HDMI_CTRL, ctrl);
@@ -409,6 +411,7 @@ static struct hdmi_platform_config hdmi_tx_8996_config = {
 		HDMI_CFG(pwr_clk, 8x74),
 		HDMI_CFG(hpd_clk, 8x74),
 		.hpd_freq      = hpd_clk_freq_8x74,
+		.keep_ctrl_on  = true,
 };
 
 static const struct {

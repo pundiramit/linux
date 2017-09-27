@@ -110,6 +110,9 @@ struct hdmi_platform_config {
 
 	/* gpio's: */
 	struct hdmi_gpio_data gpios[HDMI_MAX_NUM_GPIO];
+
+	/* caps, etc. */
+	bool keep_ctrl_on;
 };
 
 void msm_hdmi_set_mode(struct hdmi *hdmi, bool power_on);
