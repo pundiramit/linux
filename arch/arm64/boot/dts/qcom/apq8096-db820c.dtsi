@@ -684,7 +684,34 @@
 &sound {
 	compatible = "qcom,apq8096-sndcard";
 	model = "DB820c";
-	audio-routing =	"RX_BIAS", "MCLK";
+	audio-routing =
+		"RX_BIAS", "MCLK",
+		"MIC BIAS1", "MCLK",
+		"MIC BIAS2", "MCLK",
+		"MIC BIAS3", "MCLK",
+		"MIC BIAS4", "MCLK",
+		"AMIC1", "MIC BIAS2",
+		"MIC BIAS2", "Headset Mic",
+		"AMIC2", "MIC BIAS2",
+		"MIC BIAS2", "Headset Mic",
+		"AMIC3", "MIC BIAS2",
+		"MIC BIAS2", "ANCLeft Headset Mic",
+		"AMIC4", "MIC BIAS2",
+		"MIC BIAS2", "ANCRight Headset Mic",
+		"AMIC5", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic6",
+		"AMIC6", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic7",
+		"DMIC2", "MIC BIAS1",
+		"MIC BIAS1", "Digital Mic2",
+		"DMIC3", "MIC BIAS1",
+		"MIC BIAS1", "Digital Mic3",
+		"DMIC4", "MIC BIAS3",
+		"MIC BIAS3", "Digital Mic4",
+		"DMIC5", "MIC BIAS3",
+		"MIC BIAS3", "Digital Mic5",
+		"SpkrLeft IN", "SPK1 OUT",
+		"SpkrRight IN", "SPK2 OUT";
 
 	mm1-dai-link {
 		link-name = "MultiMedia1";
