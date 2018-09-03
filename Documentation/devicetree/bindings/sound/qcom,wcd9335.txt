@@ -55,6 +55,26 @@ Required properties with SLIMbus Interface:
 	Value type: <string>
 	Definition: Must contain "mclk", "mclk2" and "slimbus" strings.
 
+- qcom,mbhc-vthreshold:
+	Usage: Optional, only required if headset button support required.
+	Value type: <u32 array>
+	Definition: Must contain an array of 8 threshold voltages in mV for
+		 8 buttons detection on headset.
+
+- qcom,hphl-jack-type-normally-open:
+	Usage: Optional, only required if headset button support required.
+	Value type: <boolean>
+	Definition: present if hphl pin on jack is a NO (Normally Open).
+		If not specified, then its assumed that hphl pin on jack
+		is NC (Normally Closed).
+
+- qcom,gnd-jack-type-normally-open:
+	Usage: Optional, only required if headset button support required.
+	Value type: <boolean>
+	Definition: present if gnd pin on jack is NO (Normally Open).
+		 If not specified, then its assumed that gnd pin on
+		 jack is NC  (Normally Closed).
+
 - vdd-buck-supply:
 	Usage: required
 	Value type: <phandle>
