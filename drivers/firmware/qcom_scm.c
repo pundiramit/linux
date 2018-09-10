@@ -356,6 +356,18 @@ int qcom_scm_io_writel(phys_addr_t addr, unsigned int val)
 }
 EXPORT_SYMBOL(qcom_scm_io_writel);
 
+int qcom_scm_io_readl_atomic(phys_addr_t addr, unsigned int *val)
+{
+	return __qcom_scm_io_readl_atomic(__scm->dev, addr, val);
+}
+EXPORT_SYMBOL(qcom_scm_io_readl_atomic);
+
+int qcom_scm_io_writel_atomic(phys_addr_t addr, unsigned int val)
+{
+	return __qcom_scm_io_writel_atomic(__scm->dev, addr, val);
+}
+EXPORT_SYMBOL(qcom_scm_io_writel_atomic);
+
 static void qcom_scm_set_download_mode(bool enable)
 {
 	bool avail;
