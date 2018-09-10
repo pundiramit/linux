@@ -626,3 +626,8 @@ int __qcom_scm_io_writel_atomic(struct device *dev, phys_addr_t addr,
 {
 	return -ENODEV;
 }
+
+int __qcom_scm_qsmmu500_wait_safe_toggle(struct device *dev, bool enable)
+{
+	return -ENODEV;
+}
