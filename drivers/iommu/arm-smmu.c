@@ -39,6 +39,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/qcom_scm.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 
@@ -185,7 +186,8 @@ struct arm_smmu_device {
 #define ARM_SMMU_FEAT_EXIDS		(1 << 12)
 	u32				features;
 
-#define ARM_SMMU_OPT_SECURE_CFG_ACCESS (1 << 0)
+#define ARM_SMMU_OPT_SECURE_CFG_ACCESS	 (1 << 0)
+#define ARM_SMMU_OPT_QCOM_FW_IMPL_ERRATA (1 << 1)
 	u32				options;
 	enum arm_smmu_arch_version	version;
 	enum arm_smmu_implementation	model;
@@ -271,6 +273,7 @@ static bool using_legacy_binding, using_generic_binding;
 
 static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "calxeda,smmu-secure-config-access" },
+	{ ARM_SMMU_OPT_QCOM_FW_IMPL_ERRATA, "qcom,smmu-500-fw-impl-errata" },
 	{ 0, NULL},
 };
 
@@ -547,10 +550,132 @@ static void arm_smmu_tlb_inv_vmid_nosync(unsigned long iova, size_t size,
 	writel_relaxed(smmu_domain->cfg.vmid, base + ARM_SMMU_GR0_TLBIVMID);
 }
 
+#define CUSTOM_CFG_MDP_SAFE_ENABLE		BIT(15)
+#define CUSTOM_CFG_IFE1_SAFE_ENABLE		BIT(14)
+#define CUSTOM_CFG_IFE0_SAFE_ENABLE		BIT(13)
+
+static int __qsmmu500_wait_safe_toggle(struct arm_smmu_device *smmu, int en)
+{
+	int ret;
+	u32 val, gid_phys_base;
+	phys_addr_t reg;
+	struct vm_struct *vm;
+
+	/* We want physical address of SMMU, so the vm_area */
+	vm = find_vm_area(smmu->base);
+
+	/*
+	 * GID (implementation defined address space) is located at
+	 * SMMU_BASE + (2 × PAGESIZE).
+	 */
+	gid_phys_base = vm->phys_addr + (2 << (smmu)->pgshift);
+	reg = gid_phys_base + ARM_SMMU_GID_QCOM_CUSTOM_CFG;
+
+	ret = qcom_scm_io_readl_atomic(reg, &val);
+	if (ret)
+		return ret;
+
+	if (en)
+		val |= CUSTOM_CFG_MDP_SAFE_ENABLE |
+		       CUSTOM_CFG_IFE0_SAFE_ENABLE |
+		       CUSTOM_CFG_IFE1_SAFE_ENABLE;
+	else
+		val &= ~(CUSTOM_CFG_MDP_SAFE_ENABLE |
+			 CUSTOM_CFG_IFE0_SAFE_ENABLE |
+			 CUSTOM_CFG_IFE1_SAFE_ENABLE);
+
+	ret = qcom_scm_io_writel_atomic(reg, val);
+
+	return ret;
+}
+
+static int qsmmu500_wait_safe_toggle(struct arm_smmu_device *smmu,
+				     int en, bool is_fw_impl)
+{
+	if (is_fw_impl)
+		return qcom_scm_qsmmu500_wait_safe_toggle(en);
+	else
+		return __qsmmu500_wait_safe_toggle(smmu, en);
+}
+
+static void qcom_errata_tlb_sync(struct arm_smmu_domain *smmu_domain)
+{
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
+	void __iomem *base = ARM_SMMU_CB(smmu, smmu_domain->cfg.cbndx);
+	bool is_fw_impl;
+	u32 val;
+
+	writel_relaxed(0, base + ARM_SMMU_CB_TLBSYNC);
+
+	if (!readl_poll_timeout_atomic(base + ARM_SMMU_CB_TLBSTATUS, val,
+				       !(val & sTLBGSTATUS_GSACTIVE), 0, 100))
+		return;
+
+	is_fw_impl = smmu->options & ARM_SMMU_OPT_QCOM_FW_IMPL_ERRATA ?
+			true : false;
+
+	/* SCM call here to disable the wait-for-safe logic. */
+	if (WARN(qsmmu500_wait_safe_toggle(smmu, false, is_fw_impl),
+		 "Failed to disable wait-safe logic, bad hw state\n"))
+		return;
+
+	if (!readl_poll_timeout_atomic(base + ARM_SMMU_CB_TLBSTATUS, val,
+				       !(val & sTLBGSTATUS_GSACTIVE), 0, 10000))
+		return;
+
+	/* SCM call here to re-enable the wait-for-safe logic. */
+	WARN(qsmmu500_wait_safe_toggle(smmu, true, is_fw_impl),
+	     "Failed to re-enable wait-safe logic, bad hw state\n");
+
+	dev_err_ratelimited(smmu->dev,
+			    "TLB sync timed out -- SMMU in bad state\n");
+}
+
+static void qcom_errata_tlb_sync_context(void *cookie)
+{
+	struct arm_smmu_domain *smmu_domain = cookie;
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->cb_lock, flags);
+	qcom_errata_tlb_sync(smmu_domain);
+	spin_unlock_irqrestore(&smmu_domain->cb_lock, flags);
+}
+
+static void qcom_errata_tlb_inv_context_s1(void *cookie)
+{
+	struct arm_smmu_domain *smmu_domain = cookie;
+	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
+	void __iomem *base = ARM_SMMU_CB(smmu_domain->smmu, cfg->cbndx);
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->cb_lock, flags);
+	writel_relaxed(cfg->asid, base + ARM_SMMU_CB_S1_TLBIASID);
+	qcom_errata_tlb_sync(cookie);
+	spin_unlock_irqrestore(&smmu_domain->cb_lock, flags);
+}
+
+static void qcom_errata_tlb_inv_range_nosync(unsigned long iova, size_t size,
+					     size_t granule, bool leaf,
+					     void *cookie)
+{
+	struct arm_smmu_domain *smmu_domain = cookie;
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->cb_lock, flags);
+	arm_smmu_tlb_inv_range_nosync(iova, size, granule, leaf, cookie);
+	spin_unlock_irqrestore(&smmu_domain->cb_lock, flags);
+}
+
 static const struct iommu_gather_ops arm_smmu_s1_tlb_ops = {
 	.tlb_flush_all	= arm_smmu_tlb_inv_context_s1,
 	.tlb_add_flush	= arm_smmu_tlb_inv_range_nosync,
 	.tlb_sync	= arm_smmu_tlb_sync_context,
+};
+
+static const struct iommu_gather_ops qcom_errata_s1_tlb_ops = {
+	.tlb_flush_all	= qcom_errata_tlb_inv_context_s1,
+	.tlb_add_flush	= qcom_errata_tlb_inv_range_nosync,
+	.tlb_sync	= qcom_errata_tlb_sync_context,
 };
 
 static const struct iommu_gather_ops arm_smmu_s2_tlb_ops_v2 = {
@@ -842,7 +967,11 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 			ias = min(ias, 32UL);
 			oas = min(oas, 32UL);
 		}
-		smmu_domain->tlb_ops = &arm_smmu_s1_tlb_ops;
+		if (of_device_is_compatible(smmu->dev->of_node,
+					    "qcom,sdm845-smmu-500"))
+			smmu_domain->tlb_ops = &qcom_errata_s1_tlb_ops;
+		else
+			smmu_domain->tlb_ops = &arm_smmu_s1_tlb_ops;
 		break;
 	case ARM_SMMU_DOMAIN_NESTED:
 		/*
