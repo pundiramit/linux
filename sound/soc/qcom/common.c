@@ -109,6 +109,7 @@ int qcom_snd_parse_of(struct snd_soc_card *card)
 			link->dynamic = 1;
 		}
 
+		link->nonatomic = 1;
 		link->ignore_suspend = 1;
 		ret = of_property_read_string(np, "link-name", &link->name);
 		if (ret) {
