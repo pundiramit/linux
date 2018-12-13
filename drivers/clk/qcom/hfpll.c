@@ -52,6 +52,7 @@ static int qcom_hfpll_probe(struct platform_device *pdev)
 	void __iomem *base;
 	struct regmap *regmap;
 	struct clk_hfpll *h;
+	struct clk *pclk;
 	struct clk_init_data init = {
 		.parent_names = (const char *[]){ "xo" },
 		.num_parents = 1,
@@ -74,6 +75,13 @@ static int qcom_hfpll_probe(struct platform_device *pdev)
 	if (of_property_read_string_index(dev->of_node, "clock-output-names",
 					  0, &init.name))
 		return -ENODEV;
+
+	/* get parent clock from device tree (optional) */
+	pclk = devm_clk_get(dev, "xo");
+	if (!IS_ERR(pclk))
+		init.parent_names = (const char *[]){ __clk_get_name(pclk) };
+	else if (PTR_ERR(pclk) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
 
 	h->d = &hdata;
 	h->clkr.hw.init = &init;
