@@ -1822,6 +1822,58 @@
 			qcom,remote-pid = <2>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+
+			fastrpc {
+				compatible = "qcom,fastrpc";
+				qcom,smd-channels = "fastrpcsmd-apps-dsp";
+				/* DOMAIN_ADSP */
+				label = "adsp";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				cb@8 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <8>;
+					iommus = <&lpass_q6_smmu 8>;
+				};
+				cb@9 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <9>;
+					iommus = <&lpass_q6_smmu 9>;
+				};
+				cb@10 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <10>;
+					iommus = <&lpass_q6_smmu 10>;
+				};
+				cb@11 {
+					reg = <11>;
+					compatible = "qcom,fastrpc-compute-cb";
+					iommus = <&lpass_q6_smmu 11>;
+				};
+				cb@12 {
+					reg = <12>;
+					compatible = "qcom,fastrpc-compute-cb";
+					iommus = <&lpass_q6_smmu 12>;
+				};
+				cb@5 {
+					reg = <5>;
+					compatible = "qcom,fastrpc-compute-cb";
+					iommus = <&lpass_q6_smmu 5>;
+				};
+				cb@6 {
+					reg = <6>;
+					compatible = "qcom,fastrpc-compute-cb";
+					iommus = <&lpass_q6_smmu 6>;
+				};
+				cb@7 {
+					reg = <7>;
+					compatible = "qcom,fastrpc-compute-cb";
+					iommus = <&lpass_q6_smmu 7>;
+				};
+
+			};
+
 			apr {
 				power-domains = <&gcc HLOS1_VOTE_LPASS_ADSP_GDSC>;
 				compatible = "qcom,apr-v2";
