@@ -2307,6 +2307,22 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	struct arm_smmu_device *smmu;
 	struct device *dev = &pdev->dev;
 	int num_irqs, i, err;
+	void __iomem *mdp_intf;
+
+	/*
+	 * HACK: Booting the SDM845 with splash screen means that the MDP is
+	 * pulling data from the framebuffer, which is remapped in the SMMU.
+	 * Initializing the SMMU will remove this mapping and cause a sudden
+	 * restart. The dependencies to start the display clocks are not yet in
+	 * place. This hack just stops the MDP before initializing the SMMU,
+	 * allowing us to rely on the bootloader to initialize the necessary
+	 * clocks.
+	 */
+	if (of_device_is_compatible(dev->of_node, "qcom,sdm845-smmu-500")) {
+		mdp_intf = ioremap(0xae6b800, 0x300);
+		writel(0, mdp_intf + 0);
+		iounmap(mdp_intf);
+	}
 
 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
 	if (!smmu) {
