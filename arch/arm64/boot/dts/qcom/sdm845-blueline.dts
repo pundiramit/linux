@@ -10,8 +10,10 @@
 #include "pmi8998.dtsi"
 
 / {
-	model = "Thundercomm Dragonboard 845c";
-	compatible = "thundercomm,db845c", "qcom,sdm845";
+	model = "Google Pixel 3";
+	compatible = "google,b1c1-sdm845", "thundercomm,db845c", "qcom,sdm845";
+	qcom,board-id = <0x00021505 0>;
+	qcom,msm-id = <321 0x20001>;
 
 	aliases {
 		serial0 = &uart9;
