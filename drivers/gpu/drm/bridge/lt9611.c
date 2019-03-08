@@ -543,6 +543,23 @@ static int lt9611_power_off(struct lt9611 *lt9611)
 	return ret;
 }
 
+static void lt9611_i2s_init(struct lt9611 *lt9611)
+{
+	const struct reg_sequence init[] = {
+		{ 0xff, 0x82 },
+		{ 0xd6, 0x8c },
+		{ 0xd7, 0x04 },
+
+		{ 0xff, 0x84 },
+		{ 0x06, 0x08 },
+		{ 0x07, 0x10 },
+
+		{ 0x34, 0xd4 },
+	};
+
+	regmap_multi_reg_write(lt9611->regmap, init, ARRAY_SIZE(init));
+}
+
 static void lt9611_reset(struct lt9611 *lt9611)
 {
 	gpiod_set_value_cansleep(lt9611->reset_gpio, 1);
@@ -1069,6 +1086,8 @@ static int lt9611_probe(struct i2c_client *client,
 		dev_err(dev, "failed to read chip rev\n");
 		goto err_disable_regulators;
 	}
+
+	lt9611_i2s_init(lt9611);
 
 	ret = devm_request_threaded_irq(dev, client->irq, NULL,
 					lt9611_irq_thread_handler,
