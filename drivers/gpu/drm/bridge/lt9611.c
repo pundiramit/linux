@@ -931,7 +931,7 @@ static void lt9611_bridge_post_disable(struct drm_bridge *bridge)
 
 	dev_dbg(lt9611->dev, "bridge post_disable\n");
 
-	lt9611_sleep_setup(lt9611);
+	//lt9611_sleep_setup(lt9611);
 }
 
 static void lt9611_bridge_mode_set(struct drm_bridge *bridge,
