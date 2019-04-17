@@ -19,6 +19,11 @@
 #include <linux/regmap.h>
 #include <linux/interrupt.h>
 #include <linux/component.h>
+#include <sound/hdmi-codec.h>
+#include <sound/core.h>
+#include <sound/hdmi-codec.h>
+#include <sound/pcm.h>
+#include <sound/soc.h>
 #include <linux/of_gpio.h>
 #include <linux/of_graph.h>
 #include <linux/of_irq.h>
@@ -46,6 +51,7 @@ struct lt9611 {
 	struct device_node *dsi1_node;
 	struct mipi_dsi_device *dsi0;
 	struct mipi_dsi_device *dsi1;
+	struct platform_device *audio_pdev;
 
 	bool ac_mode;
 
@@ -543,23 +549,6 @@ static int lt9611_power_off(struct lt9611 *lt9611)
 	return ret;
 }
 
-static void lt9611_i2s_init(struct lt9611 *lt9611)
-{
-	const struct reg_sequence init[] = {
-		{ 0xff, 0x82 },
-		{ 0xd6, 0x8c },
-		{ 0xd7, 0x04 },
-
-		{ 0xff, 0x84 },
-		{ 0x06, 0x08 },
-		{ 0x07, 0x10 },
-
-		{ 0x34, 0xd4 },
-	};
-
-	regmap_multi_reg_write(lt9611->regmap, init, ARRAY_SIZE(init));
-}
-
 static void lt9611_reset(struct lt9611 *lt9611)
 {
 	gpiod_set_value_cansleep(lt9611->reset_gpio, 1);
@@ -1034,6 +1023,98 @@ static int lt9611_read_device_rev(struct lt9611 *lt9611)
 	return ret;
 }
 
+int lt9611_hdmi_hw_params(struct device *dev, void *data,
+			   struct hdmi_codec_daifmt *fmt,
+			   struct hdmi_codec_params *hparms)
+{
+	return 0;
+}
+
+static int lt9611_audio_startup(struct device *dev, void *data)
+{
+	struct lt9611 *lt9611 = data;
+	const struct reg_sequence init[] = {
+		{ 0xff, 0x82 },
+		{ 0xd6, 0x8c },
+		{ 0xd7, 0x04 },
+
+		{ 0xff, 0x84 },
+		{ 0x06, 0x18 },
+		{ 0x07, 0xf0 },
+
+		{ 0x34, 0xd4 },
+	};
+
+	regmap_multi_reg_write(lt9611->regmap, init, ARRAY_SIZE(init));
+
+	return 0;
+}
+
+static void lt9611_audio_shutdown(struct device *dev, void *data)
+{
+	struct lt9611 *lt9611 = data;
+	const struct reg_sequence exit[] = {
+		{ 0xff, 0x84 },
+		{ 0x06, 0x00 },
+		{ 0x07, 0x00 },
+	};
+
+	regmap_multi_reg_write(lt9611->regmap, exit, ARRAY_SIZE(exit));
+}
+
+static int lt9611_hdmi_i2s_get_dai_id(struct snd_soc_component *component,
+					struct device_node *endpoint)
+{
+	struct of_endpoint of_ep;
+	int ret;
+
+pr_err("DEBUG: %s: %d \n", __func__, __LINE__);
+	ret = of_graph_parse_endpoint(endpoint, &of_ep);
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * HDMI sound should be located as reg = <2>
+	 * Then, it is sound port 0
+	 */
+	if (of_ep.port == 2)
+		return 0;
+
+	return -EINVAL;
+}
+
+static const struct hdmi_codec_ops lt9611_codec_ops = {
+	.hw_params	= lt9611_hdmi_hw_params,
+	.audio_shutdown = lt9611_audio_shutdown,
+	.audio_startup	= lt9611_audio_startup,
+	.get_dai_id	= lt9611_hdmi_i2s_get_dai_id,
+};
+
+static struct hdmi_codec_pdata codec_data = {
+	.ops = &lt9611_codec_ops,
+	.max_i2s_channels = 8,
+	.i2s = 1,
+};
+
+int lt9611_audio_init(struct device *dev, struct lt9611 *lt9611)
+{
+	codec_data.data = lt9611;
+	lt9611->audio_pdev = platform_device_register_data(dev,
+					HDMI_CODEC_DRV_NAME,
+					PLATFORM_DEVID_AUTO,
+					&codec_data,
+					sizeof(codec_data));
+	return PTR_ERR_OR_ZERO(lt9611->audio_pdev);
+}
+
+void lt9611_audio_exit(struct lt9611 *lt9611)
+{
+	if (lt9611->audio_pdev) {
+		platform_device_unregister(lt9611->audio_pdev);
+		lt9611->audio_pdev = NULL;
+	}
+}
+
 static int lt9611_probe(struct i2c_client *client,
 	 const struct i2c_device_id *id)
 {
@@ -1087,7 +1168,6 @@ static int lt9611_probe(struct i2c_client *client,
 		goto err_disable_regulators;
 	}
 
-	lt9611_i2s_init(lt9611);
 
 	ret = devm_request_threaded_irq(dev, client->irq, NULL,
 					lt9611_irq_thread_handler,
@@ -1106,7 +1186,7 @@ static int lt9611_probe(struct i2c_client *client,
 
 	lt9611_enable_hpd_interrupts(lt9611);
 
-	return 0;
+	return lt9611_audio_init(dev, lt9611);
 
 err_disable_regulators:
 	regulator_bulk_disable(ARRAY_SIZE(lt9611->supplies), lt9611->supplies);
@@ -1122,7 +1202,7 @@ static int lt9611_remove(struct i2c_client *client)
 	struct lt9611 *lt9611 = i2c_get_clientdata(client);
 
 	disable_irq(client->irq);
-
+	lt9611_audio_exit(lt9611);
 	drm_bridge_remove(&lt9611->bridge);
 
 	regulator_bulk_disable(ARRAY_SIZE(lt9611->supplies), lt9611->supplies);
