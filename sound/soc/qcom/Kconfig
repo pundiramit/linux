@@ -97,6 +97,16 @@ config SND_SOC_MSM8996
           APQ8096 SoC-based systems.
           Say Y if you want to use audio device on this SoCs
 
+config SND_SOC_DB845C
+	tristate "SoC Machine driver for Dragon Board DB845c board"
+	depends on QCOM_APR
+	select SND_SOC_QDSP6
+	select SND_SOC_QCOM_COMMON
+	help
+	  To add support for audio on Qualcomm Technologies Inc.
+	  Dragon Board DB845c Board.
+	  Say Y if you want to use audio device on this Board.
+
 config SND_SOC_SDM845
 	tristate "SoC Machine driver for SDM845 boards"
 	depends on QCOM_APR && MFD_CROS_EC && I2C
