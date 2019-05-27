@@ -32,6 +32,7 @@
 #define CLK_OPS_PARENT_ENABLE	BIT(12)
 /* duty cycle call may be forwarded to the parent clock */
 #define CLK_DUTY_CYCLE_PARENT	BIT(13)
+#define CLK_INHERIT_BOOTLOADER	BIT(14) /* clk may be enabled from bootloader */
 
 struct clk;
 struct clk_hw;
@@ -346,6 +347,15 @@ struct clk_hw *clk_hw_register_fixed_rate_with_accuracy(struct device *dev,
 void clk_hw_unregister_fixed_rate(struct clk_hw *hw);
 
 void of_fixed_clk_setup(struct device_node *np);
+
+/**
+ * clk_inherit_enabled - update the enable/prepare count of a clock and it's
+ * parents for clock enabled by bootloader.
+ *
+ * Intended to be used by clock drivers to inform the clk core of a clock
+ * that is already running.
+ */
+void clk_inherit_enabled(struct clk *clk);
 
 /**
  * struct clk_gate - gating clock
