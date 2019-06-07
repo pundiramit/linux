@@ -177,6 +177,7 @@ struct snd_soc_dai_ops {
 
 	int (*set_sdw_stream)(struct snd_soc_dai *dai,
 			void *stream, int direction);
+	void *(*get_sdw_stream)(struct snd_soc_dai *dai, int direction);
 	/*
 	 * DAI digital mute - optional.
 	 * Called by soc-core to minimise any pops.
@@ -383,6 +384,15 @@ static inline int snd_soc_dai_set_sdw_stream(struct snd_soc_dai *dai,
 		return dai->driver->ops->set_sdw_stream(dai, stream, direction);
 	else
 		return -ENOTSUPP;
+}
+
+static inline void *snd_soc_dai_get_sdw_stream(struct snd_soc_dai *dai, int direction)
+{
+	if (dai->driver->ops->get_sdw_stream)
+		return dai->driver->ops->get_sdw_stream(dai, direction);
+	else
+		return NULL;
+
 }
 
 #endif
