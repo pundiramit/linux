@@ -383,6 +383,8 @@
 };
 
 &tlmm {
+	gpio-reserved-ranges = <0 4>, <81 4>;
+
 	pcie0_pwren_state: pcie0-pwren {
 		pins = "gpio90";
 		function = "gpio";
