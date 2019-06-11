@@ -78,7 +78,7 @@ int sdw_add_bus_master(struct sdw_bus *bus)
 	if (IS_ENABLED(CONFIG_ACPI) && ACPI_HANDLE(bus->dev))
 		ret = sdw_acpi_find_slaves(bus);
 	else
-		ret = -ENOTSUPP; /* No ACPI/DT so error out */
+		ret = sdw_of_find_slaves(bus);
 
 	if (ret) {
 		dev_err(bus->dev, "Finding slaves failed:%d\n", ret);
