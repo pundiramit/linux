@@ -201,6 +201,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_UDA1380 if I2C
 	select SND_SOC_WCD9335 if SLIMBUS
 	select SND_SOC_WCD934X if SLIMBUS
+	select SND_SOC_WSA881X if SOUNDWIRE
 	select SND_SOC_WL1273 if MFD_WL1273_CORE
 	select SND_SOC_WM0010 if SPI_MASTER
 	select SND_SOC_WM1250_EV1 if I2C
@@ -1221,6 +1222,15 @@ config SND_SOC_WCD934X
 	help
 	  The WCD9340/9341 is a audio codec IC Integrated in
 	  Qualcomm SoCs like SDM845.
+
+config SND_SOC_WSA881X
+	tristate "WSA881X Codec"
+	depends on SOUNDWIRE_QCOM
+	select REGMAP_SOUNDWIRE
+	tristate
+	help
+	  This enables support for Qualcomm WSA8810/WSA8815 Class-D
+	  Smart Speaker Amplifier.
 
 config SND_SOC_WL1273
 	tristate
