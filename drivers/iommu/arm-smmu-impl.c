@@ -5,6 +5,7 @@
 #define pr_fmt(fmt) "arm-smmu: " fmt
 
 #include <linux/bitfield.h>
+#include <linux/qcom_scm.h>
 #include <linux/of.h>
 
 #include "arm-smmu.h"
@@ -46,7 +47,6 @@ static const struct arm_smmu_impl calxeda_impl = {
 	.read_reg = arm_smmu_read_ns,
 	.write_reg = arm_smmu_write_ns,
 };
-
 
 struct cavium_smmu {
 	struct arm_smmu_device smmu;
@@ -147,6 +147,32 @@ static const struct arm_smmu_impl arm_mmu500_impl = {
 	.reset = arm_mmu500_reset,
 };
 
+static int qcom_mmu500_cfg_probe(struct arm_smmu_device *smmu)
+{
+	int err;
+
+	if (of_property_read_bool(smmu->dev->of_node,
+				   "qcom,smmu-500-fw-impl-safe-errata")) {
+		/*
+		 * To address performance degradation in non-real time clients,
+		 * such as USB and UFS, turn off wait-for-safe on sdm845 platforms,
+		 * such as MTP, whose firmwares implement corresponding secure monitor
+		 * call handlers.
+		 */
+		err = qcom_scm_qsmmu500_wait_safe_toggle(0);
+		if (err)
+			dev_warn(smmu->dev, "Failed to turn off SAFE logic\n");
+
+		printk(KERN_ERR "%s() ===================================\n", __func__);
+	}
+
+	return 0;
+}
+
+static const struct arm_smmu_impl qcom_mmu500_impl = {
+	.cfg_probe = qcom_mmu500_cfg_probe,
+	.reset = arm_mmu500_reset,
+};
 
 struct arm_smmu_device *arm_smmu_impl_init(struct arm_smmu_device *smmu)
 {
@@ -159,6 +185,9 @@ struct arm_smmu_device *arm_smmu_impl_init(struct arm_smmu_device *smmu)
 	switch (smmu->model) {
 	case ARM_MMU500:
 		smmu->impl = &arm_mmu500_impl;
+		break;
+	case QCOM_MMU500:
+		smmu->impl = &qcom_mmu500_impl;
 		break;
 	case CAVIUM_SMMUV2:
 		return cavium_smmu_impl_init(smmu);
