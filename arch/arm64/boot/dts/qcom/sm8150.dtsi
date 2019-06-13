@@ -173,6 +173,21 @@
 			};
 		};
 
+		tlmm: pinctrl@3000000 {
+			compatible = "qcom,sm8150-pinctrl";
+			reg = <0x03100000 0x300000>,
+			      <0x03500000 0x300000>,
+			      <0x03900000 0x300000>,
+			      <0x03D00000 0x300000>;
+			reg-names = "west", "east", "north", "south";
+			interrupts = <GIC_SPI 208 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-ranges = <&tlmm 0 0 175>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
 		intc: interrupt-controller@17a00000 {
 			compatible = "arm,gic-v3";
 			interrupt-controller;
