@@ -5117,6 +5117,13 @@ S:	Orphan / Obsolete
 F:	drivers/gpu/drm/i810/
 F:	include/uapi/drm/i810_drm.h
 
+DRM DRIVER FOR LG SW43408 PANELS
+M:      Sumit Semwal <sumit.semwal@linaro.org>
+T:      git git://anongit.freedesktop.org/drm/drm-misc
+S:      Maintained
+F:      drivers/gpu/drm/panel/panel-lg-sw43408.c
+F:      Documentation/devicetree/bindings/display/panel/lg,sw43408-panel.txt
+
 DRM DRIVER FOR MATROX G200/G400 GRAPHICS CARDS
 S:	Orphan / Obsolete
 F:	drivers/gpu/drm/mga/
