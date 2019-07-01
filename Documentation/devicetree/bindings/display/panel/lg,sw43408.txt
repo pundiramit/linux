@@ -1,0 +1,47 @@
+LG model SW43408 DSI display driver
+
+The LG SW43408 is a generic display driver, currently only configured
+for use in the Pixel3 phone based on SDM845 chipset.
+
+Required properties:
+- compatible: should be "lg,sw43408"
+- reg: DSI virtual channel of the peripheral
+- vddi-supply: phandle of the regulator that provides the supply voltage
+  Power IC supply
+- vpnl-supply: phandle of the regulator that provides the supply voltage
+  for positive LCD bias
+- lab-supply: phandle of the regulator that provides the supply voltage
+  for LABIBB
+- reset-gpios: phandle of gpio for reset line
+  This should be 8mA, gpio can be configured using mux, pinctrl, pinctrl-names
+  (active high)
+- ports: This device has one video port driven by one DSIs. Their connections
+  are modeled using the OF graph bindings specified in
+  Documentation/devicetree/bindings/graph.txt.
+  - port@0: DSI input port driven by master DSI
+
+Example:
+
+	dsi@ae94000 {
+		panel@0 {
+		compatible = "lg,sw43408";
+		reg = <0>;
+		vddi-supply = <&vreg_l14a_1p88>;
+		vpnl-supply = <&vreg_l28a_3p0>;
+		lab-supply = <&lab_regulator>;
+
+		reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				lg_sw43408_in_0: endpoint {
+					remote-endpoint = <&dsi0_out>;
+				};
+			};
+		};
+	};
+	};
