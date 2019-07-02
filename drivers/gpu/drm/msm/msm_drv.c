@@ -1328,6 +1328,7 @@ static struct platform_driver msm_platform_driver = {
 		.name   = "msm",
 		.of_match_table = dt_match,
 		.pm     = &msm_pm_ops,
+		.driver_manages_iommu = true,
 	},
 };
 
