@@ -185,4 +185,11 @@ config PINCTRL_SM8150
          Qualcomm Technologies Inc TLMM block found on the Qualcomm
          Technologies Inc SM8150 platform.
 
+config PINCTRL_WCD934X
+	tristate "Qualcomm Technologies Inc WCD9340/WCD9341 pin controller driver"
+	depends on GPIOLIB && OF
+	help
+         This is the pinctrl, pinmux, pinconf and gpiolib driver for the
+         Qualcomm Technologies Inc Pinctrl block found on the Qualcomm
+         Technologies Inc WCD9340/WCD9341 Audio Codec.
 endif
