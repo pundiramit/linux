@@ -408,7 +408,7 @@ static int register_lab_regulator(struct qcom_labibb *labibb,
 	struct regulator_init_data *init_data;
 	struct regulator_config cfg = {};
 
-	(labibb->lab_vreg.lab_sc_irq > 0) {
+	if (labibb->lab_vreg.lab_sc_irq > 0) {
 		ret = devm_request_threaded_irq(labibb->dev,
 						labibb->lab_vreg.lab_sc_irq,
 						NULL, labibb_sc_err_handler,
