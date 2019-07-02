@@ -1106,6 +1106,7 @@ static struct platform_driver dpu_driver = {
 		.name = "msm_dpu",
 		.of_match_table = dpu_dt_match,
 		.pm = &dpu_pm_ops,
+		.driver_manages_iommu = true,
 	},
 };
 

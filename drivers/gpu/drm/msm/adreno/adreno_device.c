@@ -448,6 +448,7 @@ static struct platform_driver adreno_driver = {
 		.name = "adreno",
 		.of_match_table = dt_match,
 		.pm = &adreno_pm_ops,
+		.driver_manages_iommu = true,
 	},
 };
 
