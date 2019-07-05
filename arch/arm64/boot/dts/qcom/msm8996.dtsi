@@ -89,7 +89,9 @@
 			compatible = "qcom,kryo";
 			reg = <0x0 0x0>;
 			enable-method = "psci";
-			cpu-idle-states = <&CPU_SLEEP_0>;
+			cpu-idle-states = <&CPU_SLEEP_0 &CPU_SLEEP_1
+					   &CLUSTER_SLEEP_0
+					   &SYSTEM_SLEEP_0>;
 			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_0>;
 			L2_0: l2-cache {
@@ -103,7 +105,9 @@
 			compatible = "qcom,kryo";
 			reg = <0x0 0x1>;
 			enable-method = "psci";
-			cpu-idle-states = <&CPU_SLEEP_0>;
+			cpu-idle-states = <&CPU_SLEEP_0 &CPU_SLEEP_1
+					   &CLUSTER_SLEEP_0
+					   &SYSTEM_SLEEP_0>;
 			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_0>;
 		};
@@ -113,7 +117,9 @@
 			compatible = "qcom,kryo";
 			reg = <0x0 0x100>;
 			enable-method = "psci";
-			cpu-idle-states = <&CPU_SLEEP_0>;
+			cpu-idle-states = <&CPU_SLEEP_0 &CPU_SLEEP_1
+					   &CLUSTER_SLEEP_0
+					   &SYSTEM_SLEEP_0>;
 			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_1>;
 			L2_1: l2-cache {
@@ -127,7 +133,9 @@
 			compatible = "qcom,kryo";
 			reg = <0x0 0x101>;
 			enable-method = "psci";
-			cpu-idle-states = <&CPU_SLEEP_0>;
+			cpu-idle-states = <&CPU_SLEEP_0 &CPU_SLEEP_1
+					   &CLUSTER_SLEEP_0
+					   &SYSTEM_SLEEP_0>;
 			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_1>;
 		};
@@ -159,10 +167,37 @@
 
 			CPU_SLEEP_0: cpu-sleep-0 {
 				compatible = "arm,idle-state";
+				idle-state-name = "wfi";
+				arm,psci-suspend-param = <0x00000001>;
+				entry-latency-us = <40>;
+				exit-latency-us = <80>;
+				min-residency-us = <300>;
+			};
+
+			CPU_SLEEP_1: cpu-sleep-1 {
+				compatible = "arm,idle-state";
 				idle-state-name = "standalone-power-collapse";
 				arm,psci-suspend-param = <0x00000004>;
 				entry-latency-us = <130>;
 				exit-latency-us = <80>;
+				min-residency-us = <300>;
+			};
+
+			CLUSTER_SLEEP_0: cluster-sleep-0 {
+				compatible = "arm,idle-state";
+				idle-state-name = "pwr-l2-wfi";
+				arm,psci-suspend-param = <0x40000001>;
+				entry-latency-us = <45>;
+				exit-latency-us = <85>;
+				min-residency-us = <300>;
+			};
+
+			SYSTEM_SLEEP_0: system-sleep-0 {
+				compatible = "arm,idle-state";
+				idle-state-name = "system-wfi";
+				arm,psci-suspend-param = <0x40000001>;
+				entry-latency-us = <20>;
+				exit-latency-us = <120>;
 				min-residency-us = <300>;
 			};
 		};
