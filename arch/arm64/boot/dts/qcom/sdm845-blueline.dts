@@ -253,6 +253,7 @@
 			regulator-min-microvolt = <880000>;
 			regulator-max-microvolt = <880000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
 		};
 
 		vreg_l5a_0p8: ldo5 {
@@ -283,6 +284,7 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
                 };
 
 
@@ -321,6 +323,7 @@
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
 		};
 
 		vreg_l28a_3p0: ldo28 {
@@ -594,7 +597,7 @@
 		reg = <0>;
 		vddi-supply = <&vreg_l14a_1p88>;
 		vpnl-supply = <&vreg_l28a_3p0>;
-//		lab-supply = <&lab_regulator>;
+		lab-supply = <&lab_regulator>;
 
 		reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
 

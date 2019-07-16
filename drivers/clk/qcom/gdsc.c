@@ -321,6 +321,7 @@ static int gdsc_init(struct gdsc *sc)
 	}
 
 	on = gdsc_check_status(sc, GDSC_ON);
+pr_err("gdsc: %s state is %d\n", sc->pd.name, on);
 	if (on < 0)
 		return on;
 
@@ -332,7 +333,7 @@ static int gdsc_init(struct gdsc *sc)
 		gdsc_enable(&sc->pd);
 
 	if ((sc->flags & INHERIT_BL) && on) {
-		pr_debug("gdsc: %s is enabled from bootloader!\n", sc->pd.name);
+		pr_err("gdsc: %s is enabled from bootloader!\n", sc->pd.name);
 		sc->pd.flags |= GENPD_FLAG_INHERIT_BL;
 	}
 

@@ -371,7 +371,7 @@ static int panel_add(struct panel_info *pinfo)
 {
 	struct device *dev = &pinfo->link->dev;
 	int i, ret;
-
+pr_err("In sw43408 panel add\n");
 	for (i = 0; i < ARRAY_SIZE(pinfo->supplies); i++)
 		pinfo->supplies[i].supply = regulator_names[i];
 
@@ -392,13 +392,14 @@ static int panel_add(struct panel_info *pinfo)
 		return PTR_ERR(pinfo->backlight);
 
 	drm_panel_init(&pinfo->base);
+pr_err("In sw43408 panel add: after drm_panel_init\n");
 	pinfo->base.funcs = &panel_funcs;
 	pinfo->base.dev = &pinfo->link->dev;
 
 	ret = drm_panel_add(&pinfo->base);
 	if (ret < 0)
 		return ret;
-
+pr_err("In sw43408 panel add: drm_panel_add returned %d\n", ret);
 	return 0;
 }
 
@@ -426,12 +427,15 @@ static int panel_probe(struct mipi_dsi_device *dsi)
 
 	pinfo->link = dsi;
 	mipi_dsi_set_drvdata(dsi, pinfo);
+pr_err("In sw43408 panel probe\n");
 
 	err = panel_add(pinfo);
 	if (err < 0)
 		return err;
 
-	return mipi_dsi_attach(dsi);
+	err = mipi_dsi_attach(dsi);
+pr_err("In sw43408 panel probe: mipi_dsi_attach returned: %d\n", err);
+	return err;	
 }
 
 static int panel_remove(struct mipi_dsi_device *dsi)
