@@ -39,19 +39,19 @@ struct panel_cmd {
 static const char * const regulator_names[] = {
 	"vddi",
 	"vpnl",
-//	"lab", // Validate the name
+	"lab_reg", // Validate the name
 };
 
 static unsigned long const regulator_enable_loads[] = {
 	62000,
 	857000,
-//	0,	// Confirm this value
+	100000,	// Confirm this value
 };
 
 static unsigned long const regulator_disable_loads[] = {
 	80,
 	0,
-//	0,	// confirm this value
+	100,	// confirm this value
 };
 
 struct panel_desc {
