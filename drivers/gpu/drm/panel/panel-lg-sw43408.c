@@ -74,6 +74,8 @@ struct panel_info {
 	const struct panel_desc *desc;
 
 	struct backlight_device *backlight;
+	u32 brightness;
+	u32 max_brightness;
 
 	struct regulator_bulk_data supplies[ARRAY_SIZE(regulator_names)];
 
@@ -289,6 +291,69 @@ static int lg_panel_get_modes(struct drm_panel *panel)
 	return 1;
 }
 
+static int lg_panel_backlight_update_status(struct backlight_device *bl)
+{
+	struct panel_info *pinfo = bl_get_data(bl);
+
+	if (bl->props.power != FB_BLANK_UNBLANK ||
+	    bl->props.fb_blank != FB_BLANK_UNBLANK ||
+	    bl->props.state & BL_CORE_FBBLANK) {
+		pinfo->brightness = 0;
+	}
+/* HACK: always set the brightness
+	else
+*/
+		pinfo->brightness = bl->props.brightness;
+
+pr_err("sw43408: panel_backlight_update_status: setting brightness to: %d\n", pinfo->brightness);
+
+	return mipi_dsi_dcs_set_display_brightness(pinfo->link,
+					pinfo->brightness);
+
+}
+
+static int lg_panel_backlight_get_brightness(struct backlight_device *bl)
+{
+	struct panel_info *pinfo = bl_get_data(bl);
+	int ret = 0;
+	u16 brightness = 0;
+
+	ret = mipi_dsi_dcs_get_display_brightness(pinfo->link, &brightness);
+	if (ret < 0)
+		return ret;
+pr_err("sw43408: panel_backlight_get_brightness: current brightness is: %d\n", brightness);
+
+	return brightness & 0xff;
+}
+
+const struct backlight_ops lg_panel_backlight_ops = {
+	.update_status = lg_panel_backlight_update_status,
+	.get_brightness = lg_panel_backlight_get_brightness,
+};
+
+static int lg_panel_backlight_init(struct panel_info *pinfo)
+{
+	struct backlight_properties props = {};
+	struct backlight_device	*bl;
+	struct device *dev = &pinfo->link->dev;
+
+	props.type = BACKLIGHT_RAW;
+// Set the max_brightness to 255 to begin with
+	props.max_brightness = pinfo->max_brightness = 255;
+	props.brightness = pinfo->max_brightness;
+	pinfo->brightness = pinfo->max_brightness;
+	bl = devm_backlight_device_register(dev, "lg-sw43408", dev, pinfo,
+					     &lg_panel_backlight_ops, &props);
+	if (IS_ERR(bl)) {
+		DRM_ERROR("failed to register backlight device\n");
+		return PTR_ERR(bl);
+	}
+	pinfo->backlight = bl;
+
+	return 0;
+}
+
+
 static const struct drm_panel_funcs panel_funcs = {
 	.disable = lg_panel_disable,
 	.unprepare = lg_panel_unprepare,
@@ -387,9 +452,9 @@ pr_err("In sw43408 panel add\n");
 		return PTR_ERR(pinfo->reset_gpio);
 	}
 
-	pinfo->backlight = devm_of_find_backlight(dev);
-	if (IS_ERR(pinfo->backlight))
-		return PTR_ERR(pinfo->backlight);
+	ret = lg_panel_backlight_init(pinfo);
+	if (ret < 0)
+		return ret;
 
 	drm_panel_init(&pinfo->base);
 pr_err("In sw43408 panel add: after drm_panel_init\n");
