@@ -1,0 +1,54 @@
+Tianma model NT36672A DSI display driver
+
+The Tianma NT36672A is a generic display driver, currently only configured
+for use in the Poco F1 phone based on SDM845 chipset.
+
+Required properties:
+- compatible: should be "tianma,nt36672a"
+- reg: DSI virtual channel of the peripheral
+- vddio-supply: phandle of the regulator that provides the supply voltage
+  Power IC supply
+- lab-supply: phandle of the regulator that provides the supply voltage
+  for lab LABIBB
+- ibb-supply: phandle of the regulator that provides the supply voltage
+  for ibb LABIBB
+- reset-gpios: phandle of gpio for reset line
+  This should be 8mA, gpio can be configured using mux, pinctrl, pinctrl-names
+  (active high)
+- pinctrl-names: Pinctrl for panel active and suspend
+- pinctrl-0: Active pinctrls
+- pinctrl-1: Suspend pinctrls
+- ports: This device has one video port driven by one DSIs. Their connections
+  are modeled using the OF graph bindings specified in
+  Documentation/devicetree/bindings/graph.txt.
+  - port@0: DSI input port driven by master DSI
+
+Example:
+
+	dsi@ae94000 {
+		panel@0 {
+		compatible = "tianma,nt36672a";
+		reg = <0>;
+		vddi0-supply = <&vreg_l14a_1p88>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+
+		reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
+		
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				tianma_nt36672a_in_0: endpoint {
+					remote-endpoint = <&dsi0_out>;
+				};
+			};
+		};
+	};
+	};
