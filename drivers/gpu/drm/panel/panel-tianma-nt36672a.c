@@ -144,8 +144,6 @@ static int tianma_panel_disable(struct drm_panel *panel)
 {
 	struct panel_info *pinfo = to_panel_info(panel);
 
-	backlight_disable(pinfo->backlight);
-
 	pinfo->enabled = false;
 
 	return 0;
@@ -189,8 +187,6 @@ static int tianma_panel_unprepare(struct drm_panel *panel)
 
 	if (!pinfo->prepared)
 		return 0;
-
-	pinfo->desc->mode_flags &= ~MIPI_DSI_MODE_LPM;
 
 	/* send off cmds */
 	ret = send_mipi_cmds(panel, pinfo->desc->off_cmds);
@@ -270,8 +266,6 @@ static int tianma_panel_prepare(struct drm_panel *panel)
 	if (pinfo->prepared)
 		return 0;
 
-	pinfo->desc->mode_flags |= MIPI_DSI_MODE_LPM;
-
 	err = tianma_panel_power_on(pinfo);
 	if (err < 0)
 		goto poweroff;
@@ -329,13 +323,7 @@ static int tianma_panel_enable(struct drm_panel *panel)
 	if (pinfo->enabled)
 		return 0;
 
-	ret = backlight_enable(pinfo->backlight);
-	if (ret) {
-		DRM_DEV_ERROR(panel->drm->dev,
-				"Failed to enable backlight %d\n", ret);
-		return ret;
-	}
-
+// enable backlight here
 	pinfo->enabled = true;
 
 	return 0;
@@ -378,10 +366,10 @@ static int tianma_panel_backlight_get_brightness(struct backlight_device *bl)
 
 static int tianma_panel_backlight_init(struct panel_info *pinfo)
 {
-	struct device *dev = &pinfo->link->dev;
-	int rc = 0;
 
 #if 0
+	int rc = 0;
+
 	led_trigger_register_simple("bkl-trigger", &pinfo->wled);
 
 	/* LED APIs don't tell us directly whether a classdev has yet
