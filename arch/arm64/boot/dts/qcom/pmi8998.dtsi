@@ -47,5 +47,25 @@
 				interrupt-names = "lab-sc-err";
 			};
 		};
+
+		pmi8998_wled: qcom,leds@d800 {
+			compatible = "qcom,pmi8998-wled";
+			reg = <0xd800 0xd900>;
+			interrupts = <0x3 0xd8 0x1 IRQ_TYPE_EDGE_RISING>,
+				     <0x3 0xd8 0x2 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "ovp-irq", "sc-irq";
+			label = "backlight";
+
+			qcom,switching-freq = <800>;
+			qcom,ovp-millivolt = <29600>;
+			qcom,current-boost-limit = <970>;
+			qcom,current-limit-microamp = <25000>;
+			qcom,num-strings = <4>;
+			qcom,enabled-strings = <0 1 2 3>;
+			qcom,qcom,external-pfet;
+
+			status = "disabled";
+		};
+
 	};
 };
