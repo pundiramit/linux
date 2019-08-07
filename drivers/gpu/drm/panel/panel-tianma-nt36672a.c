@@ -72,8 +72,7 @@ struct panel_info {
 	struct mipi_dsi_device *link;
 	const struct panel_desc *desc;
 
-	/* WLED params */
-	struct led_trigger *wled;
+	struct backlight_device *backlight;
 	u32 brightness;
 	u32 max_brightness;
 
@@ -144,6 +143,7 @@ static int tianma_panel_disable(struct drm_panel *panel)
 {
 	struct panel_info *pinfo = to_panel_info(panel);
 
+	backlight_disable(pinfo->backlight);
 	pinfo->enabled = false;
 
 	return 0;
@@ -323,7 +323,7 @@ static int tianma_panel_enable(struct drm_panel *panel)
 	if (pinfo->enabled)
 		return 0;
 
-// enable backlight here
+	backlight_enable(pinfo->backlight);
 	pinfo->enabled = true;
 
 	return 0;
@@ -825,9 +825,10 @@ pr_err("In nt36672a panel add\n");
 	if (ret < 0)
 		return ret;
 
-	ret = tianma_panel_backlight_init(pinfo);
-	if (ret < 0)
-		return ret;
+	pinfo->backlight = devm_of_find_backlight(dev);
+
+	if (IS_ERR(pinfo->backlight))
+		return PTR_ERR(pinfo->backlight);
 
 	drm_panel_init(&pinfo->base, dev, &panel_funcs,
 		       DRM_MODE_CONNECTOR_DPI);
