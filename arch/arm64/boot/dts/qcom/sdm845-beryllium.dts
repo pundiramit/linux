@@ -636,3 +636,11 @@
 &mdss_mdp {
 	status = "okay";
 };
+
+&pmi8998_wled {
+	status = "okay";
+	qcom,current-limit-microamp = <20000>;
+	qcom,enabled-strings = <0 1>;
+	qcom,cabc;
+	qcom,switching-freq = <600>;
+};
