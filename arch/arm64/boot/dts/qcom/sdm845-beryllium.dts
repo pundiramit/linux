@@ -339,6 +339,26 @@
 			   <GCC_QSPI_CNOC_PERIPH_AHB_CLK>;
 };
 
+&pcie0 {
+	status = "okay";
+	perst-gpio = <&tlmm 35 GPIO_ACTIVE_LOW>;
+	enable-gpio = <&tlmm 134 GPIO_ACTIVE_HIGH>;
+
+	vddpe-3v3-supply = <&pcie0_3p3v_dual>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_perst_state>, <&pcie0_clkreq_state>, <&pcie0_wake_state>;
+
+	vddpe-3v3-supply = <&pcie0_3p3v_dual>;
+};
+
+&pcie0_phy {
+	status = "okay";
+
+	vdda-phy-supply = <&vreg_l1a_0p875>;
+	vdda-pll-supply = <&vreg_l26a_1p2>;
+};
+
 &pm8998_gpio {
 	vol_up_pin_a: vol-up-active {
 		pins = "gpio6";
@@ -389,6 +409,29 @@
 
 		drive-strength = <2>;
 		bias-disable;
+	};
+
+	pcie0_perst_state: pcie0-reset {
+		pins = "gpio35";
+		function = "gpio";
+
+		drive-strength = <2>;
+		output-low;
+		bias-pull-down;
+	};
+
+	pcie0_clkreq_state: pcie0-clkreq {
+		pins = "gpio36";
+		function = "pci_e0";
+		bias-pull-up;
+	};
+
+	pcie0_wake_state: pcie0-wake {
+		pins = "gpio37";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-pull-up;
 	};
 
 	sdc2_default_state: sdc2-default {
