@@ -702,7 +702,7 @@
 		method = "smc";
 	};
 
-	soc: soc@0 {
+	soc: soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges = <0 0 0 0 0x10 0>;
