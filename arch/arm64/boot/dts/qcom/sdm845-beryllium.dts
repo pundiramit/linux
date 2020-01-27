@@ -644,8 +644,8 @@
 		reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "panel_active", "panel_suspend";
-		pinctrl-0 = <&sde_poco_dsi_active>;
-		pinctrl-1 = <&sde_poco_dsi_suspend>;
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
 
 		ports {
 			#address-cells = <1>;
