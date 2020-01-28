@@ -52,8 +52,6 @@ CONFIG_CP15_BARRIER_EMULATION=y
 CONFIG_SETEND_EMULATION=y
 CONFIG_ARM64_SW_TTBR0_PAN=y
 CONFIG_RANDOMIZE_BASE=y
-CONFIG_CMDLINE="console=ttyMSM0,115200n8 firmware_class.path=/vendor/firmware/ androidboot.hardware=aosp_beryllium init=/init androidboot.boot_devices=soc/1d84000.ufshc printk.devkmsg=on androidboot.selinux=permissive  pd_ignore_unused clk_ignore_inherited"
-CONFIG_CMDLINE_FORCE=y
 CONFIG_COMPAT=y
 CONFIG_HIBERNATION=y
 CONFIG_PM_WAKELOCKS=y
