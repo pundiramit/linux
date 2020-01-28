@@ -4,7 +4,7 @@
 BRANCH=v5.5-display
 KERNEL_DIR=beryllium
 
-DEFCONFIG=beryllium_gki_defconfig
+DEFCONFIG=temp_gki_defconfig
 PRE_DEFCONFIG_CMDS="cat ./beryllium/arch/arm64/configs/gki_defconfig ./beryllium/arch/arm64/configs/db845c_gki.fragment > ./beryllium/arch/arm64/configs/${DEFCONFIG};"
 POST_DEFCONFIG_CMDS="rm ./beryllium/arch/arm64/configs/${DEFCONFIG}"
 
