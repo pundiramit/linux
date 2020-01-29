@@ -251,9 +251,9 @@ static int tianma_panel_power_on(struct panel_info *pinfo)
 	 * for 10ms
 	 */
 	gpiod_set_value(pinfo->reset_gpio, 0);
-	msleep(10);
+	msleep(20);
 	gpiod_set_value(pinfo->reset_gpio, 1);
-	msleep(10);
+	msleep(20);
 
 	return 0;
 }
