@@ -677,3 +677,15 @@
 &mdss_mdp {
 	status = "okay";
 };
+
+&labibb {
+	status = "okay";
+};
+
+&ibb_regulator {
+	regulator-always-on;
+};
+
+&lab_regulator {
+	regulator-always-on;
+};
