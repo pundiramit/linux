@@ -883,9 +883,10 @@ pr_err("In nt36672a panel add\n");
 	if (IS_ERR(pinfo->backlight))
 		return PTR_ERR(pinfo->backlight);
 
-	drm_panel_init(&pinfo->base, dev, &panel_funcs,
-		       DRM_MODE_CONNECTOR_DSI);
+	drm_panel_init(&pinfo->base);
 pr_err("In nt36672a panel add: after drm_panel_init\n");
+	pinfo->base.funcs = &panel_funcs;
+	pinfo->base.dev = &pinfo->link->dev;
 
 	ret = drm_panel_add(&pinfo->base);
 	if (ret < 0)
