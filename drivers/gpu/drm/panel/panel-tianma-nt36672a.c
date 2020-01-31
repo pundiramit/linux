@@ -186,6 +186,8 @@ static int tianma_panel_unprepare(struct drm_panel *panel)
 	struct panel_info *pinfo = to_panel_info(panel);
 	int ret;
 
+	pr_err("tianma panel unprepared!");
+
 	if (!pinfo->prepared)
 		return 0;
 
@@ -294,11 +296,13 @@ static int tianma_panel_power_on(struct panel_info *pinfo)
 	 * Reset sequence of Tianma nt36672a panel requires the panel to be
 	 * out of reset for 10ms, followed by being held in reset
 	 * for 10ms
+	 * But that is not enough for AOSP and we see garbled screen
+	 * or white splash screen during bootanimation. 20ms works.
 	 */
 	gpiod_set_value(pinfo->reset_gpio, 0);
-	msleep(10);
+	msleep(20);
 	gpiod_set_value(pinfo->reset_gpio, 1);
-	msleep(10);
+	msleep(20);
 
 	return 0;
 }
