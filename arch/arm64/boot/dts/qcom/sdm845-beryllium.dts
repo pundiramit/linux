@@ -173,7 +173,9 @@
 &gcc {
 	protected-clocks = <GCC_QSPI_CORE_CLK>,
 			   <GCC_QSPI_CORE_CLK_SRC>,
-			   <GCC_QSPI_CNOC_PERIPH_AHB_CLK>;
+			   <GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
+			   <GCC_LPASS_Q6_AXI_CLK>,
+			   <GCC_LPASS_SWAY_CLK>;
 };
 
 &gpu {
@@ -204,6 +206,10 @@
 };
 
 &qupv3_id_0 {
+	status = "okay";
+};
+
+&qupv3_id_1 {
 	status = "okay";
 };
 
@@ -252,6 +258,61 @@
 		pins = "gpio126";
 		function = "gpio";
 		bias-pull-up;
+	};
+
+	ts_int_active: ts_int_active {
+		mux {
+			pins = "gpio31";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio31";
+			drive-strength = <16>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	ts_reset_active: ts_reset_active {
+		mux {
+			pins = "gpio32";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio32";
+			drive-strength = <16>;
+			output-high;
+		};
+	};
+
+	ts_reset_suspend: ts_reset_suspend {
+		mux {
+			pins = "gpio32";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio32";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	ts_int_suspend: ts_int_suspend {
+		mux {
+			pins = "gpio31";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio31";
+			drive-strength = <2>;
+			bias-pull-down;
+			input-enable;
+		};
 	};
 };
 
@@ -389,4 +450,116 @@
 
 &mdss_mdp {
 	status = "okay";
+};
+
+/*
+        &dma {
+                #dma-cells = <5>;
+//		#address-cells = <5>;
+//		#size-cells = <5>;
+                compatible = "qcom,gpi-dma";
+//                reg = <a00000 60000>;
+		reg = <0 0xa00000 0 0x60000>;
+                reg-names = "gpi-top";
+                interrupts = <0 279 0>, <0 280 0>, <0 281 0>, <0 282 0>,
+                             <0 283 0>, <0 284 0>, <0 293 0>, <0 294 0>,
+                             <0 295 0>, <0 296 0>, <0 297 0>, <0 298 0>,
+                             <0 299 0>;
+                qcom,max-num-gpii = <13>;
+                qcom,gpii-mask = <0xfa>;
+                qcom,ev-factor = <2>;
+                iommus = <&apps_smmu 0x06d6 0x0>;
+                qcom,smmu-cfg = <0x1>;
+                qcom,iova-range = <0x0 0x100000 0x0 0x100000>;
+                status = "okay";
+        };
+*/
+/*
+&apps_smmu {
+
+	status = "okay";
+
+};
+*/
+/*
+&lpasscc {
+
+	status= "okay";
+
+};
+
+&dma {
+                compatible = "ti,omap-sdma";
+                interrupts = <0 279 0>, <0 280 0>, <0 281 0>, <0 282 0>,
+                             <0 283 0>, <0 284 0>, <0 293 0>, <0 294 0>,
+                             <0 295 0>, <0 296 0>, <0 297 0>, <0 298 0>,
+                             <0 299 0>;
+                dma-channels = <13>;
+                iommus = <&apps_smmu 0x06d6 0x0>;
+                status = "okay";
+ 
+                #dma-cells = <5>;
+                };
+*/
+
+&i2c14 {
+
+        status="disabled";
+//      dmas = <&dma 0 6 3 64 0>,
+//              <&dma 1 6 3 64 0>;
+//      dma-names = "tx", "rx";
+
+        clock-frequency = <400000>;
+        novatek@62 {
+                compatible = "novatek,NVT-ts";
+                reg = <0x62>;
+                status = "okay";
+
+                vddio-supply = <&vreg_l14a_1p88>;
+//                avdd-supply = <&pm8994_l22>;
+                lab-supply = <&lab>;
+                ibb-supply = <&ibb>;
+                novatek,vddio-reg-name = "vddio";
+                novatek,lab-reg-name = "lab";
+                novatek,ibb-reg-name = "ibb";
+
+                novatek,reset-tddi = <&tlmm 6 0x00 /* GPIO_ACTIVE_HIGH */ >;
+                novatek,reset-gpio = <&tlmm 32 0x00 /* GPIO_ACTIVE_HIGH */ >;
+                novatek,irq-gpio = <&tlmm 31 0x2001>;
+		enable-active-high;
+
+                pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+//		pinctrl-names = "default", "suspend";
+                pinctrl-0 = <&ts_int_active &ts_reset_active>;  
+                pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+                novatek,config-array-size = <2>;
+                novatek,dump-click-count;
+                novatek,cfg_0 {
+                        novatek,tp-vendor = <0x46>;
+                        novatek,hw-version = <0x1>;
+                        novatek,fw-name = "novatek_nt36672_e10_hw01.fw";
+//                      novatek,clicknum-file-name = "nvt+tianma";
+                };
+                novatek,cfg_1 {
+                        novatek,tp-vendor = <0x46>;
+                        novatek,hw-version = <0x2>;
+                        novatek,fw-name = "novatek_nt36672_e10_hw02.fw";
+//                      novatek,clicknum-file-name = "nvt+tianma";
+                };
+        };
+ 
+};
+
+&qup_i2c14_default{
+        pinconf {
+                pins = "gpio33", "gpio34";
+                drive-strength = <2>;
+                bias-pull-up;
+        };
+};
+ 
+&uart14 {
+ 
+        status = "okay";
+
 };
