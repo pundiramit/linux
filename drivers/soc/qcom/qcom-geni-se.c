@@ -78,19 +78,6 @@
  */
 
 #define MAX_CLK_PERF_LEVEL 32
-#define NUM_AHB_CLKS 2
-
-/**
- * @struct geni_wrapper - Data structure to represent the QUP Wrapper Core
- * @dev:		Device pointer of the QUP wrapper core
- * @base:		Base address of this instance of QUP wrapper core
- * @ahb_clks:		Handle to the primary & secondary AHB clocks
- */
-struct geni_wrapper {
-	struct device *dev;
-	void __iomem *base;
-	struct clk_bulk_data ahb_clks[NUM_AHB_CLKS];
-};
 
 #define QUP_HW_VER_REG			0x4
 
