@@ -23,8 +23,21 @@ enum geni_se_protocol_type {
 	GENI_SE_I3C,
 };
 
-struct geni_wrapper;
 struct clk;
+
+#define NUM_AHB_CLKS 2
+
+/**
+ * @struct geni_wrapper - Data structure to represent the QUP Wrapper Core
+ * @dev:		Device pointer of the QUP wrapper core
+ * @base:		Base address of this instance of QUP wrapper core
+ * @ahb_clks:		Handle to the primary & secondary AHB clocks
+ */
+struct geni_wrapper {
+	struct device *dev;
+	void __iomem *base;
+	struct clk_bulk_data ahb_clks[NUM_AHB_CLKS];
+};
 
 /**
  * struct geni_se - GENI Serial Engine
@@ -49,6 +62,7 @@ struct geni_se {
 #define SE_GENI_STATUS			0x40
 #define GENI_SER_M_CLK_CFG		0x48
 #define GENI_SER_S_CLK_CFG		0x4c
+#define GENI_IF_DISABLE_RO		0x64
 #define GENI_FW_REVISION_RO		0x68
 #define SE_GENI_CLK_SEL			0x7c
 #define SE_GENI_DMA_MODE_EN		0x258
@@ -94,6 +108,9 @@ struct geni_se {
 /* GENI_FW_REVISION_RO fields */
 #define FW_REV_PROTOCOL_MSK		GENMASK(15, 8)
 #define FW_REV_PROTOCOL_SHFT		8
+
+/* GENI_IF_DISABLE_RO fields */
+#define FIFO_IF_DISABLE			(BIT(0))
 
 /* GENI_CLK_SEL fields */
 #define CLK_SEL_MSK			GENMASK(2, 0)
