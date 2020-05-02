@@ -452,7 +452,6 @@
 	status = "okay";
 };
 
-/*
         &dma {
                 #dma-cells = <5>;
 //		#address-cells = <5>;
@@ -473,38 +472,17 @@
                 qcom,iova-range = <0x0 0x100000 0x0 0x100000>;
                 status = "okay";
         };
-*/
-/*
+
 &apps_smmu {
 
 	status = "okay";
 
 };
-*/
-/*
-&lpasscc {
 
-	status= "okay";
-
-};
-
-&dma {
-                compatible = "ti,omap-sdma";
-                interrupts = <0 279 0>, <0 280 0>, <0 281 0>, <0 282 0>,
-                             <0 283 0>, <0 284 0>, <0 293 0>, <0 294 0>,
-                             <0 295 0>, <0 296 0>, <0 297 0>, <0 298 0>,
-                             <0 299 0>;
-                dma-channels = <13>;
-                iommus = <&apps_smmu 0x06d6 0x0>;
-                status = "okay";
- 
-                #dma-cells = <5>;
-                };
-*/
 
 &i2c14 {
 
-        status="disabled";
+        status="okay";
 //      dmas = <&dma 0 6 3 64 0>,
 //              <&dma 1 6 3 64 0>;
 //      dma-names = "tx", "rx";

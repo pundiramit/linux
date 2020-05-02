@@ -1420,6 +1420,12 @@
 			};
 		};
 
+
+			dma: qcom,gpi-dma@0xa00000 {
+				status = "disabled";
+			};
+
+
 		system-cache-controller@1100000 {
 			compatible = "qcom,sdm845-llcc";
 			reg = <0 0x01100000 0 0x200000>, <0 0x01300000 0 0x50000>;
