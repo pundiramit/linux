@@ -1346,7 +1346,8 @@
 			};
 
 			i2c14: i2c@a98000 {
-				compatible = "qcom,geni-i2c";
+//				compatible = "qcom,geni-i2c";
+				compatible = "i2c-gpio";
 				reg = <0 0x00a98000 0 0x4000>;
 				clock-names = "se";
 				clocks = <&gcc GCC_QUPV3_WRAP1_S6_CLK>;

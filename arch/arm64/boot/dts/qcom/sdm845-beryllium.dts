@@ -483,12 +483,14 @@
 &i2c14 {
 
         status="okay";
-//      dmas = <&dma 0 6 3 64 0>,
-//              <&dma 1 6 3 64 0>;
-//      dma-names = "tx", "rx";
 
-        clock-frequency = <400000>;
-        novatek@62 {
+	sda-gpios = <&tlmm 33 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+	scl-gpios = <&tlmm 34 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+	i2c-gpio,delay-us = <5>;	/* 5~=100 kHz */ /* could probably run on higher speeds */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+        touchscreen: novatek@62 {
                 compatible = "novatek,NVT-ts";
                 reg = <0x62>;
                 status = "okay";
@@ -504,10 +506,9 @@
                 novatek,reset-tddi = <&tlmm 6 0x00 /* GPIO_ACTIVE_HIGH */ >;
                 novatek,reset-gpio = <&tlmm 32 0x00 /* GPIO_ACTIVE_HIGH */ >;
                 novatek,irq-gpio = <&tlmm 31 0x2001>;
-		enable-active-high;
+//		enable-active-high;
 
                 pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-//		pinctrl-names = "default", "suspend";
                 pinctrl-0 = <&ts_int_active &ts_reset_active>;  
                 pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
                 novatek,config-array-size = <2>;
