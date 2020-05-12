@@ -12,6 +12,7 @@
 enum geni_se_xfer_mode {
 	GENI_SE_INVALID,
 	GENI_SE_FIFO,
+	GENI_GPI_DMA,
 	GENI_SE_DMA,
 };
 
