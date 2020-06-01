@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2020, The Linux Foundation. All rights reserved.
 
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of_irq.h>
 #include <linux/of.h>
@@ -18,6 +19,7 @@
 #define REG_LABIBB_ENABLE_CTL		0x46
 #define LABIBB_STATUS1_VREG_OK_BIT	BIT(7)
 #define LABIBB_CONTROL_ENABLE		BIT(7)
+#define LABIBB_STATUS1_SC_DETECT_BIT	BIT(6)
 
 #define LAB_ENABLE_CTL_MASK		BIT(7)
 #define IBB_ENABLE_CTL_MASK		(BIT(7) | BIT(6))
@@ -27,12 +29,16 @@
 #define IBB_ENABLE_TIME			(LABIBB_OFF_ON_DELAY * 10)
 #define LABIBB_POLL_ENABLED_TIME	1000
 
+#define POLLING_SCP_DONE_INTERVAL_US	5000
+#define POLLING_SCP_TIMEOUT		16000
+
 struct labibb_regulator {
 	struct regulator_desc		desc;
 	struct device			*dev;
 	struct regmap			*regmap;
 	struct regulator_dev		*rdev;
 	u16				base;
+	bool				enabled;
 	u8				type;
 };
 
@@ -59,12 +65,26 @@ static int qcom_labibb_regulator_is_enabled(struct regulator_dev *rdev)
 
 static int qcom_labibb_regulator_enable(struct regulator_dev *rdev)
 {
-	return regulator_enable_regmap(rdev);
+	int ret;
+	struct labibb_regulator *reg = rdev_get_drvdata(rdev);
+
+	ret = regulator_enable_regmap(rdev);
+	if (ret >= 0)
+		reg->enabled = true;
+
+	return ret;
 }
 
 static int qcom_labibb_regulator_disable(struct regulator_dev *rdev)
 {
-	return regulator_disable_regmap(rdev);
+	int ret = 0;
+	struct labibb_regulator *reg = rdev_get_drvdata(rdev);
+
+	ret = regulator_disable_regmap(rdev);
+	if (ret >= 0)
+		reg->enabled = false;
+
+	return ret;
 }
 
 static struct regulator_ops qcom_labibb_ops = {
@@ -73,12 +93,70 @@ static struct regulator_ops qcom_labibb_ops = {
 	.is_enabled		= qcom_labibb_regulator_is_enabled,
 };
 
+static irqreturn_t labibb_sc_err_handler(int irq, void *_reg)
+{
+	int ret;
+	u16 reg;
+	unsigned int val;
+	struct labibb_regulator *labibb_reg = _reg;
+	bool in_sc_err, scp_done = false;
+
+	ret = regmap_read(labibb_reg->regmap,
+			  labibb_reg->base + REG_LABIBB_STATUS1, &val);
+	if (ret < 0) {
+		dev_err(labibb_reg->dev, "sc_err_irq: Read failed, ret=%d\n",
+			ret);
+		return IRQ_HANDLED;
+	}
+
+	dev_dbg(labibb_reg->dev, "%s SC error triggered! STATUS1 = %d\n",
+		labibb_reg->desc.name, val);
+
+	in_sc_err = !!(val & LABIBB_STATUS1_SC_DETECT_BIT);
+
+	/*
+	 * The SC(short circuit) fault would trigger PBS(Portable Batch
+	 * System) to disable regulators for protection. This would
+	 * cause the SC_DETECT status being cleared so that it's not
+	 * able to get the SC fault status.
+	 * Check if the regulator is enabled in the driver but
+	 * disabled in hardware, this means a SC fault had happened
+	 * and SCP handling is completed by PBS.
+	 */
+	if (!in_sc_err) {
+
+		reg = labibb_reg->base + REG_LABIBB_ENABLE_CTL;
+
+		ret = regmap_read_poll_timeout(labibb_reg->regmap,
+					reg, val,
+					!(val & LABIBB_CONTROL_ENABLE),
+					POLLING_SCP_DONE_INTERVAL_US,
+					POLLING_SCP_TIMEOUT);
+
+		if (!ret && labibb_reg->enabled) {
+			dev_dbg(labibb_reg->dev,
+				"%s has been disabled by SCP\n",
+				labibb_reg->desc.name);
+			scp_done = true;
+		}
+	}
+
+	if (in_sc_err || scp_done) {
+		regulator_lock(labibb_reg->rdev);
+		regulator_notifier_call_chain(labibb_reg->rdev,
+						REGULATOR_EVENT_OVER_CURRENT,
+						NULL);
+		regulator_unlock(labibb_reg->rdev);
+	}
+	return IRQ_HANDLED;
+}
+
 static struct regulator_dev *register_labibb_regulator(struct labibb_regulator *reg,
 				const struct labibb_regulator_data *reg_data,
 				struct device_node *of_node)
 {
 	struct regulator_config cfg = {};
-	int ret;
+	int ret, sc_irq;
 
 	reg->base = reg_data->base;
 	reg->type = reg_data->type;
@@ -94,6 +172,24 @@ static struct regulator_dev *register_labibb_regulator(struct labibb_regulator *
 	reg->desc.enable_time = reg_data->enable_time;
 	reg->desc.poll_enabled_time = LABIBB_POLL_ENABLED_TIME;
 	reg->desc.off_on_delay = LABIBB_OFF_ON_DELAY;
+
+	sc_irq = of_irq_get_byname(of_node, "sc-err");
+	if (sc_irq < 0) {
+		dev_err(reg->dev, "Unable to get sc-err, ret = %d\n",
+			sc_irq);
+		return ERR_PTR(sc_irq);
+	} else {
+		ret = devm_request_threaded_irq(reg->dev,
+						sc_irq,
+						NULL, labibb_sc_err_handler,
+						IRQF_ONESHOT,
+						"sc-err", reg);
+		if (ret) {
+			dev_err(reg->dev, "Failed to register sc-err irq ret=%d\n",
+				ret);
+			return ERR_PTR(ret);
+		}
+	}
 
 	cfg.dev = reg->dev;
 	cfg.driver_data = reg;
