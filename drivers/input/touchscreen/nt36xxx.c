@@ -566,11 +566,10 @@ static int32_t nvt_flash_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations nvt_flash_fops = {
-	.owner = THIS_MODULE,
-	.open = nvt_flash_open,
-	.release = nvt_flash_close,
-	.read = nvt_flash_read,
+static const struct proc_ops nvt_flash_fops = {
+	.proc_open = nvt_flash_open,
+	.proc_release = nvt_flash_close,
+	.proc_read = nvt_flash_read,
 };
 
 /*******************************************************
