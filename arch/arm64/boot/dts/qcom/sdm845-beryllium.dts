@@ -257,6 +257,30 @@
 	status = "okay";
 };
 
+&i2c5 {
+	status="okay";
+	clock-frequency = <400000>;
+
+       /*smart PA*/
+       tas2559@4c{
+               compatible = "ti,tas2559";
+               reg = <0x4c>;
+               ti,tas2559-reset-gpio = <&tlmm 12 0>;
+               ti,tas2560-reset-gpio = <&tlmm 76 0>;
+               ti,tas2559-irq-gpio = <&tlmm 11 0>;
+               ti,tas2560-irq-gpio = <&tlmm 30 0>;
+               ti,tas2559-addr = <0x4c>;
+               ti,tas2560-addr = <0x4d>;
+               ti,tas2559-channel = <0>; /* 0, left; 1, right */
+               ti,tas2560-channel = <1>; /* 0, left; 1, right */
+               ti,ycrc-enable = <1>;           /* 0, disable; non-zero, enable */
+               ti,echo-ref = <0>;              /* 0, left channel; 1, right channel; 2, both */
+               ti,bit-rate = <16>;             /* 16, 20, 24, 32 */
+               status = "okay";
+       };
+
+};
+
 &sdhc_2 {
 	status = "okay";
 
