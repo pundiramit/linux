@@ -311,6 +311,10 @@ snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
 snd-soc-tas2562-objs := tas2562.o
 snd-soc-tas2764-objs := tas2764.o
+snd-soc-tas2559-objs := tas2559-core.o tas2559-regmap.o tas2559-codec.o
+ccflags-y += -DCONFIG_TAS2559_CODEC
+ccflags-y += -DDEBUG
+obj-$(CONFIG_SND_SOC_TAS2559) += snd-soc-tas2559.o
 # Mux
 snd-soc-simple-mux-objs := simple-mux.o
 
