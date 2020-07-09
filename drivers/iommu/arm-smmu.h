@@ -321,6 +321,9 @@ struct arm_smmu_device {
 	/* IOMMU core code handle */
 	struct iommu_device		iommu;
 
+	struct iommu_domain		*identity;
+	unsigned int			num_identity_masters;
+
 	bool				qcom_bypass_quirk;
 };
 
