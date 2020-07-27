@@ -20,8 +20,8 @@ static inline unsigned long vma_last_pgoff(struct vm_area_struct *v)
 	return v->vm_pgoff + vma_pages(v) - 1;
 }
 
-INTERVAL_TREE_DEFINE(struct vm_area_struct, shared.rb,
-		     unsigned long, shared.rb_subtree_last,
+INTERVAL_TREE_DEFINE(struct vm_area_struct, shared.interval.rb,
+		     unsigned long, shared.interval.rb_subtree_last,
 		     vma_start_pgoff, vma_last_pgoff,, vma_interval_tree)
 
 /* Insert node immediately after prev in the interval tree */
@@ -35,26 +35,26 @@ void vma_interval_tree_insert_after(struct vm_area_struct *node,
 
 	VM_BUG_ON_VMA(vma_start_pgoff(node) != vma_start_pgoff(prev), node);
 
-	if (!prev->shared.rb.rb_right) {
+	if (!prev->shared.interval.rb.rb_right) {
 		parent = prev;
-		link = &prev->shared.rb.rb_right;
+		link = &prev->shared.interval.rb.rb_right;
 	} else {
-		parent = rb_entry(prev->shared.rb.rb_right,
-				  struct vm_area_struct, shared.rb);
-		if (parent->shared.rb_subtree_last < last)
-			parent->shared.rb_subtree_last = last;
-		while (parent->shared.rb.rb_left) {
-			parent = rb_entry(parent->shared.rb.rb_left,
-				struct vm_area_struct, shared.rb);
-			if (parent->shared.rb_subtree_last < last)
-				parent->shared.rb_subtree_last = last;
+		parent = rb_entry(prev->shared.interval.rb.rb_right,
+				  struct vm_area_struct, shared.interval.rb);
+		if (parent->shared.interval.rb_subtree_last < last)
+			parent->shared.interval.rb_subtree_last = last;
+		while (parent->shared.interval.rb.rb_left) {
+			parent = rb_entry(parent->shared.interval.rb.rb_left,
+				struct vm_area_struct, shared.interval.rb);
+			if (parent->shared.interval.rb_subtree_last < last)
+				parent->shared.interval.rb_subtree_last = last;
 		}
-		link = &parent->shared.rb.rb_left;
+		link = &parent->shared.interval.rb.rb_left;
 	}
 
-	node->shared.rb_subtree_last = last;
-	rb_link_node(&node->shared.rb, &parent->shared.rb, link);
-	rb_insert_augmented(&node->shared.rb, &root->rb_root,
+	node->shared.interval.rb_subtree_last = last;
+	rb_link_node(&node->shared.interval.rb, &parent->shared.interval.rb, link);
+	rb_insert_augmented(&node->shared.interval.rb, &root->rb_root,
 			    &vma_interval_tree_augment);
 }
 
