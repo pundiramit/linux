@@ -296,61 +296,6 @@
 		function = "gpio";
 		bias-pull-up;
 	};
-
-	ts_int_active: ts_int_active {
-		mux {
-			pins = "gpio31";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio31";
-			drive-strength = <16>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
-
-	ts_reset_active: ts_reset_active {
-		mux {
-			pins = "gpio32";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio32";
-			drive-strength = <16>;
-			output-high;
-		};
-	};
-
-	ts_reset_suspend: ts_reset_suspend {
-		mux {
-			pins = "gpio32";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio32";
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	ts_int_suspend: ts_int_suspend {
-		mux {
-			pins = "gpio31";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio31";
-			drive-strength = <2>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
 };
 
 &uart6 {
@@ -499,29 +444,19 @@
 };
 
 &apps_smmu {
-
 	status = "okay";
-
 };
 
-&qup_i2c14_default{
-        pinconf {
-                pins = "gpio33", "gpio34";
-                drive-strength = <2>;
-                bias-pull-up;
-        };
+&gpi_dma1 {
+	status = "okay";
 };
 
 &i2c14 {
-	compatible = "i2c-gpio";
-
         status="okay";
 
-	sda-gpios = <&tlmm 33 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
-	scl-gpios = <&tlmm 34 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
-	i2c-gpio,delay-us = <5>;	/* 5~=100 kHz */ /* could probably run on higher speeds */
-	#address-cells = <1>;
-	#size-cells = <0>;
+	dmas =  <&gpi_dma1 0 6 3 64 0>,
+		<&gpi_dma1 1 6 3 64 0>;
+	dma-names = "tx", "rx";
 
         touchscreen: novatek@62 {
                 compatible = "novatek,NVT-ts";
@@ -539,11 +474,8 @@
                 novatek,reset-tddi = <&tlmm 6 0x00 /* GPIO_ACTIVE_HIGH */ >;
                 novatek,reset-gpio = <&tlmm 32 0x00 /* GPIO_ACTIVE_HIGH */ >;
                 novatek,irq-gpio = <&tlmm 31 0x2001>;
-//		enable-active-high;
 
-                pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-                pinctrl-0 = <&ts_int_active &ts_reset_active>;
-                pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-names = "default";
                 novatek,config-array-size = <2>;
                 novatek,dump-click-count;
                 novatek,cfg_0 {

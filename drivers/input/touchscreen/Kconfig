@@ -1317,7 +1317,6 @@ config TOUCHSCREEN_IQS5XX
 config TOUCHSCREEN_NT36XXX
         tristate "Novatek NT36XXX"
         depends on OF
-        depends on I2C_GPIO
         help
           Say Y here if you have a Novatek NT36xxx touchscreen connected
           to your system.
