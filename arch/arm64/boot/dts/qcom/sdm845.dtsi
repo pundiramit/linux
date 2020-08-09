@@ -2363,34 +2363,6 @@
 				};
 			};
 
-
-
-			qupv3_se5_i2c_active: qupv3_se5_i2c_active {
-				pinmux {
-					pins = "gpio85", "gpio86";
-					function = "qup5";
-				};
-
-				config {
-					pins = "gpio85", "gpio86";
-					drive-strength = <2>;
-					bias-disable;
-				};
-			};
-
-			qupv3_se5_i2c_sleep: qupv3_se5_i2c_sleep {
-				pinmux {
-					pins = "gpio85", "gpio86";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio85", "gpio86";
-					drive-strength = <2>;
-					bias-pull-up;
-				};
-			};
-
 			qup_i2c6_default: qup-i2c6-default {
 				pinmux {
 					pins = "gpio45", "gpio46";
