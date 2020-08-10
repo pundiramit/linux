@@ -1352,6 +1352,13 @@ static const struct snd_soc_dapm_widget q6afe_dai_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("DISPLAY_PORT_RX", "NULL", 0, 0, 0, 0),
 };
 
+static unsigned int q6afe_read(struct snd_soc_component *component,
+			       unsigned int reg)
+{
+	/* dummy */
+	return 0;
+}
+
 static const struct snd_soc_component_driver q6afe_dai_component = {
 	.name		= "q6afe-dai-component",
 	.dapm_widgets = q6afe_dai_widgets,
@@ -1359,7 +1366,7 @@ static const struct snd_soc_component_driver q6afe_dai_component = {
 	.dapm_routes = q6afe_dapm_routes,
 	.num_dapm_routes = ARRAY_SIZE(q6afe_dapm_routes),
 	.of_xlate_dai_name = q6afe_of_xlate_dai_name,
-
+	.read = &q6afe_read,
 };
 
 static void of_q6afe_parse_dai_data(struct device *dev,
