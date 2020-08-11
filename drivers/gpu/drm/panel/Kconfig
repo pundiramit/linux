@@ -437,6 +437,17 @@ config DRM_PANEL_TPO_TD043MTEA1
 	  Say Y here if you want to enable support for TPO TD043MTEA1 800x480
 	  4.3" panel (found on the OMAP3 Pandora board).
 
+config DRM_PANEL_TIANMA_FHD_NT36672A
+	tristate "TIANMA NT36672A panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the Tianma NT36672A
+	  panel. It is seen mostly in Xiaomi Poco F1 mobile phone.
+	  The panel has a 1080x2246 resolution and uses 24 bit RGB per pixel.
+	  It provides a MIPI DSI interface to the host.
+
 config DRM_PANEL_TPO_TPG110
 	tristate "TPO TPG 800x400 panel"
 	depends on OF && SPI && GPIOLIB
