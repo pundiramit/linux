@@ -614,7 +614,8 @@ static int ath10k_qmi_host_cap_send_sync(struct ath10k_qmi *qmi)
 	if (ret < 0)
 		goto out;
 
-	if (resp.resp.result != QMI_RESULT_SUCCESS_V01) {
+	if (resp.resp.result != QMI_RESULT_SUCCESS_V01 &&
+	    !of_machine_is_compatible("xiaomi,beryllium")) {
 		ath10k_err(ar, "host capability request rejected: %d\n", resp.resp.error);
 		ret = -EINVAL;
 		goto out;
