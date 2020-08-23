@@ -9,6 +9,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/slab.h>
 
 #include <linux/gpio/consumer.h>
 #include <linux/pinctrl/consumer.h>
@@ -89,6 +90,41 @@ static inline struct panel_info *to_panel_info(struct drm_panel *panel)
 	return container_of(panel, struct panel_info, base);
 }
 
+/*************************************************************
+ * Copied upstream mipi_dsi_dcs_write() implementation as
+ * mipi_dsi_dcs_write_copy () to workaround the android12-5.4
+ * breakage as of android12-5.4.58 (c3221b7ac740).
+ ************************************************************/
+ssize_t mipi_dsi_dcs_write_copy(struct mipi_dsi_device *dsi, u8 cmd,
+			   const void *data, size_t len)
+{
+	ssize_t err;
+	size_t size;
+	u8 *tx;
+
+	if (len > 0) {
+		size = 1 + len;
+
+		tx = kmalloc(size, GFP_KERNEL);
+		if (!tx)
+			return -ENOMEM;
+
+		/* concatenate the DCS command byte and the payload */
+		tx[0] = cmd;
+		memcpy(&tx[1], data, len);
+	} else {
+		tx = &cmd;
+		size = 1;
+	}
+
+	err = mipi_dsi_dcs_write_buffer(dsi, tx, size);
+
+	if (len > 0)
+		kfree(tx);
+
+	return err;
+}
+
 static int send_mipi_cmds(struct drm_panel *panel, const struct panel_cmd *cmds)
 {
 	struct panel_info *pinfo = to_panel_info(panel);
@@ -102,10 +138,10 @@ static int send_mipi_cmds(struct drm_panel *panel, const struct panel_cmd *cmds)
 		const struct panel_cmd *cmd = &cmds[i];
 
 		if (cmd->len == 2)
-			err = mipi_dsi_dcs_write(pinfo->link,
+			err = mipi_dsi_dcs_write_copy(pinfo->link,
 						    cmd->data[1], NULL, 0);
 		else
-			err = mipi_dsi_dcs_write(pinfo->link,
+			err = mipi_dsi_dcs_write_copy(pinfo->link,
 						    cmd->data[1], cmd->data + 2,
 						    cmd->len - 2);
 
@@ -190,7 +226,7 @@ static int tianma_panel_unprepare(struct drm_panel *panel)
 				"failed to send DCS off cmds: %d\n", ret);
 	}
 
-	ret = mipi_dsi_dcs_set_display_off(pinfo->link);
+	ret = mipi_dsi_dcs_write_copy(pinfo->link, MIPI_DCS_SET_DISPLAY_OFF, NULL, 0);
 	if (ret < 0) {
 		DRM_DEV_ERROR(panel->dev,
 			"set_display_off cmd failed ret = %d\n",
@@ -200,7 +236,7 @@ static int tianma_panel_unprepare(struct drm_panel *panel)
 	/* 120ms delay required here as per DCS spec */
 	msleep(120);
 
-	ret = mipi_dsi_dcs_enter_sleep_mode(pinfo->link);
+	ret = mipi_dsi_dcs_write_copy(pinfo->link, MIPI_DCS_ENTER_SLEEP_MODE, NULL, 0);
 	if (ret < 0) {
 		DRM_DEV_ERROR(panel->dev,
 			"enter_sleep cmd failed ret = %d\n", ret);
@@ -274,14 +310,14 @@ static int tianma_panel_prepare(struct drm_panel *panel)
 		goto poweroff;
 	}
 
-	err = mipi_dsi_dcs_set_display_on(pinfo->link);
+	err = mipi_dsi_dcs_write_copy(pinfo->link, MIPI_DCS_SET_DISPLAY_ON, NULL, 0);
 	if (err < 0) {
 		DRM_DEV_ERROR(panel->dev,
 				"failed to Set Display ON: %d\n", err);
 		goto poweroff;
 	}
 
-	err = mipi_dsi_dcs_exit_sleep_mode(pinfo->link);
+	err = mipi_dsi_dcs_write_copy(pinfo->link, MIPI_DCS_EXIT_SLEEP_MODE, NULL, 0);
 	if (err < 0) {
 		DRM_DEV_ERROR(panel->dev, "failed to exit sleep mode: %d\n",
 			      err);
