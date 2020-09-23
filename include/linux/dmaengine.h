@@ -381,6 +381,94 @@ enum dma_slave_buswidth {
 };
 
 /**
+ * enum spi_transfer_cmd - spi transfer commands
+ */
+enum spi_transfer_cmd {
+	SPI_TX = 1,
+	SPI_RX,
+	SPI_DUPLEX,
+};
+
+/**
+ * struct dmaengine_spi_config - spi config for peripheral
+ *
+ * @loopback_en: spi loopback enable when set
+ * @clock_pol: clock polarity
+ * @data_pol: data polarity
+ * @pack_en: process tx/rx buffers as packed
+ * @word_len: spi word length
+ * @clk_div: source clock divider
+ * @clk_src: serial clock
+ * @cmd: spi cmd
+ * @cs: chip select toggle
+ */
+struct dmaengine_spi_config {
+	u8 loopback_en;
+	u8 clock_pol;
+	u8 data_pol;
+	u8 pack_en;
+	u8 word_len;
+	u32 clk_div;
+	u32 clk_src;
+	u8 fragmentation;
+	enum spi_transfer_cmd cmd;
+	u8 cs;
+};
+
+enum i2c_op {
+	I2C_WRITE = 1,
+	I2C_READ,
+};
+
+/**
+ * struct dmaengine_i2c_config - i2c config for peripheral
+ *
+ * @pack_enable: process tx/rx buffers as packed
+ * @cycle_count: clock cycles to be sent
+ * @high_count: high period of clock
+ * @low_count: low period of clock
+ * @clk_div: source clock divider
+ * @addr: i2c bus address
+ * @stretch: stretch the clock at eot
+ * @op: i2c cmd
+ */
+struct dmaengine_i2c_config {
+	u8 pack_enable;
+	u8 cycle_count;
+	u8 high_count;
+	u8 low_count;
+	u16 clk_div;
+	u8 addr;
+	u8 stretch;
+	enum i2c_op op;
+	bool multi_msg;
+};
+
+enum dmaengine_peripheral {
+	DMAENGINE_PERIPHERAL_SPI = 1,
+	DMAENGINE_PERIPHERAL_UART = 2,
+	DMAENGINE_PERIPHERAL_I2C = 3,
+	DMAENGINE_PERIPHERAL_LAST = DMAENGINE_PERIPHERAL_I2C,
+};
+
+/**
+ * struct dmaengine_peripheral_config - peripheral configuration for
+ * dmaengine peripherals
+ *
+ * @peripheral: type of peripheral to DMA to/from
+ * @set_config: set peripheral config
+ * @rx_len: receive length for buffer
+ * @spi: peripheral config for spi
+ * @i2c: peripheral config for i2c
+ */
+struct dmaengine_peripheral_config {
+	enum dmaengine_peripheral peripheral;
+	u8 set_config;
+	u32 rx_len;
+	struct dmaengine_spi_config spi;
+	struct dmaengine_i2c_config i2c;
+};
+/**
  * struct dma_slave_config - dma slave channel runtime config
  * @direction: whether the data shall go in or out on this slave
  * channel, right now. DMA_MEM_TO_DEV and DMA_DEV_TO_MEM are
@@ -418,6 +506,8 @@ enum dma_slave_buswidth {
  * @slave_id: Slave requester id. Only valid for slave channels. The dma
  * slave peripheral will have unique id as dma requester which need to be
  * pass as slave config.
+ * @peripheral: peripheral configuration for programming peripheral for
+ * dmaengine transfer
  *
  * This struct is passed in as configuration data to a DMA engine
  * in order to set up a certain channel for DMA transport at runtime.
@@ -443,6 +533,7 @@ struct dma_slave_config {
 	u32 dst_port_window_size;
 	bool device_fc;
 	unsigned int slave_id;
+	struct dmaengine_peripheral_config *peripheral;
 };
 
 /**
