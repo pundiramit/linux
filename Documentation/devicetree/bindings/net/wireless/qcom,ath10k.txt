@@ -87,6 +87,11 @@ Optional properties:
 	Value type: <empty>
 	Definition: Quirk specifying that the firmware expects the 8bit version
 		    of the host capability QMI request
+- qcom,snoc-host-cap-skip-quirk:
+	Usage: Optional
+	Value type: <empty>
+	Definition: Quirk specifying that the firmware wants to skip the host
+		    capability QMI request
 - qcom,xo-cal-data: xo cal offset to be configured in xo trim register.
 
 - qcom,msa-fixed-perm: Boolean context flag to disable SCM call for statically
