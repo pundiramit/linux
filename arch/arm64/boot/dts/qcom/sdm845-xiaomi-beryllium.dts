@@ -6,6 +6,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
 #include "sdm845.dtsi"
 #include "pm8998.dtsi"
 #include "pmi8998.dtsi"
@@ -224,6 +226,10 @@
 			   <GCC_LPASS_SWAY_CLK>;
 };
 
+&gpi_dma0 {
+	status = "okay";
+};
+
 &gpi_dma1 {
 	status = "okay";
 };
@@ -232,6 +238,32 @@
 	zap-shader {
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sdm845/a630_zap.mbn";
+	};
+};
+
+&i2c5 {
+	status="okay";
+
+	dmas = <&gpi_dma0 0 5 QCOM_GPI_I2C>,
+	       <&gpi_dma0 1 5 QCOM_GPI_I2C>;
+	dma-names = "tx", "rx";
+
+	/*smart PA*/
+	tas2559_codec: tas2559@4c{
+		#sound-dai-cells = <1>;
+		compatible = "ti,tas2559";
+		reg = <0x4c>;
+		ti,tas2559-reset-gpio = <&tlmm 12 0>;
+		ti,tas2560-reset-gpio = <&tlmm 76 0>;
+		ti,tas2559-irq-gpio = <&tlmm 11 0>;
+		ti,tas2560-irq-gpio = <&tlmm 30 0>;
+		ti,tas2559-addr = <0x4c>;
+		ti,tas2560-addr = <0x4d>;
+		ti,tas2559-channel = <0>; /* 0, left; 1, right */
+		ti,tas2560-channel = <1>; /* 0, left; 1, right */
+		ti,ycrc-enable = <1>; /* 0, disable; non-zero, enable */
+		ti,echo-ref = <0>; /* 0, left channel; 1, right channel; 2, both */
+		ti,bit-rate = <16>; /* 16, 20, 24, 32 */
 	};
 };
 
@@ -278,7 +310,24 @@
 	};
 };
 
+&q6afedai {
+	qi2s@22 {
+		reg = <22>;
+		qcom,sd-lines = <0 1 2 3>;
+	};
+};
+
+&q6asmdai {
+	dai@0 {
+		reg = <0>;
+	};
+};
+
 &qupv3_id_0 {
+	status = "okay";
+};
+
+&qupv3_id_1 {
 	status = "okay";
 };
 
@@ -293,6 +342,41 @@
 
 	bus-width = <4>;
 	cd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+};
+
+&sound {
+	compatible = "qcom,db845c-sndcard";
+	pinctrl-0 = <&quat_mi2s_active
+			 &quat_mi2s_sd0_active
+			 &quat_mi2s_sd1_active
+			 &quat_mi2s_sd2_active
+			 &quat_mi2s_sd3_active>;
+	pinctrl-names = "default";
+	model = "Xiaomi Poco F1";
+	audio-routing =
+		"MM_DL1",  "MultiMedia1 Playback";
+
+	mm1-dai-link {
+		link-name = "MultiMedia1";
+		cpu {
+			sound-dai = <&q6asmdai  MSM_FRONTEND_DAI_MULTIMEDIA1>;
+		};
+	};
+
+	tas2559-dai-link {
+		link-name = "Primary Spkr Playback";
+		cpu {
+			sound-dai = <&q6afedai QUATERNARY_MI2S_RX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai =  <&tas2559_codec 0>;
+		};
+	};
 };
 
 &tlmm {
