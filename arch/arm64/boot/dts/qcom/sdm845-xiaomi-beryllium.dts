@@ -2,6 +2,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/dma/qcom-gpi.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
@@ -206,6 +207,10 @@
 	};
 };
 
+&apps_smmu {
+	status = "okay";
+};
+
 &cdsp_pas {
 	status = "okay";
 	firmware-name = "qcom/sdm845/cdsp.mdt";
@@ -219,11 +224,33 @@
 			   <GCC_LPASS_SWAY_CLK>;
 };
 
+&gpi_dma1 {
+	status = "okay";
+};
+
 &gpu {
 	zap-shader {
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sdm845/a630_zap.mbn";
 	};
+};
+
+&i2c14 {
+        status="okay";
+
+	dmas =  <&gpi_dma1 0 6 QCOM_GPI_I2C>,
+		<&gpi_dma1 1 6 QCOM_GPI_I2C>;
+	dma-names = "tx", "rx";
+
+        touchscreen: novatek@62 {
+                compatible = "novatek,nt36525"; /* Should be novatek,nt36672A instead #TODO */
+                reg = <0x62>;
+                vdd-supply = <&vreg_l14a_1p88>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <31 IRQ_TYPE_EDGE_RISING>;
+                reset-gpio = <&tlmm 32 0x00 /* GPIO_ACTIVE_HIGH */ >;
+        };
+
 };
 
 &mss_pil {
