@@ -376,6 +376,7 @@
 	qcom,current-boost-limit = <970>;
 	qcom,ovp-millivolt = <29600>;
 	qcom,current-limit-microamp = <20000>;
+	//qcom,enabled-strings = <0 1>;
 	qcom,num-strings = <2>;
 	qcom,switching-freq = <600>;
 	qcom,external-pfet;
