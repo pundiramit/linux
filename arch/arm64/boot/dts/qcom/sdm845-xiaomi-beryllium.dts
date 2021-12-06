@@ -396,6 +396,13 @@
 	monitored-battery = <&battery>;
 };
 
+&pmi8998_fg {
+	status = "okay";
+
+	power-supplies = <&pmi8998_charger>;
+	monitored-battery = <&battery>;
+};
+
 &pm8998_pon {
 	resin {
 		compatible = "qcom,pm8941-resin";
