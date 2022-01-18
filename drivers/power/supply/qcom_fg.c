@@ -84,7 +84,7 @@ struct qcom_fg_chip {
 	struct notifier_block nb;
 
 	struct power_supply *batt_psy;
-	struct power_supply_battery_info batt_info;
+	struct power_supply_battery_info *batt_info;
 	struct power_supply *chg_psy;
 	int status;
 	struct delayed_work status_changed_work;
@@ -881,13 +881,13 @@ static int qcom_fg_get_property(struct power_supply *psy,
 		ret = chip->ops->get_voltage(chip, &val->intval);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
-		val->intval = chip->batt_info.voltage_min_design_uv;
+		val->intval = chip->batt_info->voltage_min_design_uv;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		val->intval = chip->batt_info.voltage_max_design_uv;
+		val->intval = chip->batt_info->voltage_max_design_uv;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = chip->batt_info.charge_full_design_uah;
+		val->intval = chip->batt_info->charge_full_design_uah;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = chip->ops->get_temperature(chip, &val->intval);
@@ -1096,9 +1096,8 @@ static int qcom_fg_probe(struct platform_device *pdev)
 	int ret;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
-	if (!chip) {
+	if (!chip)
 		return -ENOMEM;
-	}
 
 	chip->dev = &pdev->dev;
 	chip->ops = of_device_get_match_data(&pdev->dev);
@@ -1282,6 +1281,8 @@ static int qcom_fg_probe(struct platform_device *pdev)
 static int qcom_fg_remove(struct platform_device *pdev)
 {
 	struct qcom_fg_chip *chip = platform_get_drvdata(pdev);
+
+	power_supply_put_battery_info(chip->chg_psy, chip->batt_info);
 
 	if(chip->sram_wq)
 		destroy_workqueue(chip->sram_wq);
