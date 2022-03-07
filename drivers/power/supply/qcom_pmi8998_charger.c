@@ -12,16 +12,12 @@
 #include <linux/kernel.h>
 #include <linux/minmax.h>
 #include <linux/platform_device.h>
-#include <linux/of_address.h>
 #include <linux/regmap.h>
-#include <linux/regulator/driver.h>
-#include <linux/device.h>
 #include <linux/iio/consumer.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
 #include <linux/power_supply.h>
 #include <linux/module.h>
-#include <linux/math64.h>
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
@@ -330,12 +326,14 @@ struct smb2_register {
 /**
  * struct smb2_chip - smb2 chip structure
  * @dev:		Device reference for power_supply
+ * @name:		The platform device name
  * @base:		Base address for smb2 registers
  * @regmap:		Register map
  * @reg_lock:		Mutex for register access
  * @batt_info:		Battery data from DT
- * @usbin_i_chan:	USBIN current measurement channel
- * @usbin_v_chan:	USBIN voltage measurement channel
+ * @status_change_work: Worker to handle plug/unplug events
+ * @usb_in_i_chan:	USB_IN current measurement channel
+ * @usb_in_v_chan:	USB_IN voltage measurement channel
  * @chg_psy:		Charger power supply instance
  * @usb_present:	True if a charger is attached
  */
@@ -349,8 +347,8 @@ struct smb2_chip {
 
 	struct delayed_work status_change_work;
 
-	struct iio_channel *usbin_i_chan;
-	struct iio_channel *usbin_v_chan;
+	struct iio_channel *usb_in_i_chan;
+	struct iio_channel *usb_in_v_chan;
 
 	struct power_supply *chg_psy;
 
@@ -358,16 +356,22 @@ struct smb2_chip {
 };
 
 static enum power_supply_property smb2_properties[] = {
-	POWER_SUPPLY_PROP_MANUFACTURER, POWER_SUPPLY_PROP_MODEL_NAME,
-	POWER_SUPPLY_PROP_CURRENT_MAX,	POWER_SUPPLY_PROP_CURRENT_NOW,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_HEALTH,	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_MANUFACTURER,
+	POWER_SUPPLY_PROP_MODEL_NAME,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_USB_TYPE,
 };
 
 static enum power_supply_usb_type smb2_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_SDP, POWER_SUPPLY_USB_TYPE_DCP,
-	POWER_SUPPLY_USB_TYPE_CDP, POWER_SUPPLY_USB_TYPE_C,
+	POWER_SUPPLY_USB_TYPE_SDP,
+	POWER_SUPPLY_USB_TYPE_DCP,
+	POWER_SUPPLY_USB_TYPE_CDP,
+	POWER_SUPPLY_USB_TYPE_C,
 	POWER_SUPPLY_USB_TYPE_PD_DRP
 };
 
@@ -386,10 +390,12 @@ static int smb2_apsd_get_charger_type(struct smb2_chip *chip, int *val)
 			 &apsd_stat);
 	if (rc < 0) {
 		dev_err(chip->dev, "Failed to read apsd status, rc = %d", rc);
+		mutex_unlock(&chip->reg_lock);
 		return rc;
 	}
 	if (!(apsd_stat & APSD_DTC_STATUS_DONE_BIT)) {
 		dev_err(chip->dev, "Apsd not ready");
+		mutex_unlock(&chip->reg_lock);
 		return -EAGAIN;
 	}
 
@@ -397,6 +403,7 @@ static int smb2_apsd_get_charger_type(struct smb2_chip *chip, int *val)
 			 &stat);
 	if (rc < 0) {
 		dev_err(chip->dev, "Failed to read apsd result, rc = %d", rc);
+		mutex_unlock(&chip->reg_lock);
 		return rc;
 	}
 
@@ -439,7 +446,6 @@ int smb2_get_prop_status(struct smb2_chip *chip, int *val)
 	int usb_online_val;
 	unsigned int stat;
 	int rc;
-	bool usb_online;
 
 	mutex_lock(&chip->reg_lock);
 
@@ -447,12 +453,13 @@ int smb2_get_prop_status(struct smb2_chip *chip, int *val)
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't get usb online property rc = %d\n",
 			rc);
+		mutex_unlock(&chip->reg_lock);
 		return rc;
 	}
-	usb_online = (bool)usb_online_val;
 
-	if (!usb_online) {
+	if (!usb_online_val) {
 		*val = POWER_SUPPLY_STATUS_DISCHARGING;
+		mutex_unlock(&chip->reg_lock);
 		return rc;
 	}
 
@@ -461,6 +468,7 @@ int smb2_get_prop_status(struct smb2_chip *chip, int *val)
 	if (rc < 0) {
 		dev_err(chip->dev,
 			"Failed to read charging status ret=%d\n", rc);
+		mutex_unlock(&chip->reg_lock);
 		return rc;
 	}
 
@@ -524,11 +532,13 @@ void smb2_status_change_work(struct work_struct *work)
 	mutex_lock(&chip->reg_lock);
 
 	smb2_get_prop_usb_online(chip, &usb_online);
-	if (usb_online == 0)
+	if (usb_online == 0) {
+		mutex_unlock(&chip->reg_lock);
 		return;
+	}
 
 	for (count = 0; count < 3; count++) {
-		dev_info(chip->dev, "get charger type retry %d\n", count);
+		dev_dbg(chip->dev, "get charger type retry %d\n", count);
 		rc = smb2_apsd_get_charger_type(chip, &charger_type);
 		if (rc == 0)
 			break;
@@ -540,6 +550,7 @@ void smb2_status_change_work(struct work_struct *work)
 					APSD_RERUN_BIT, APSD_RERUN_BIT);
 		schedule_delayed_work(&chip->status_change_work,
 				      msecs_to_jiffies(1500));
+		mutex_unlock(&chip->reg_lock);
 		return;
 	}
 
@@ -637,11 +648,11 @@ static int smb2_get_property(struct power_supply *psy,
 		error = smb2_get_current_limit(chip, &val->intval);
 		return 0;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		error = smb2_get_iio_chan(chip, chip->usbin_i_chan,
+		error = smb2_get_iio_chan(chip, chip->usb_in_i_chan,
 					  &val->intval);
 		return 0;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		error = smb2_get_iio_chan(chip, chip->usbin_v_chan,
+		error = smb2_get_iio_chan(chip, chip->usb_in_v_chan,
 					  &val->intval);
 		return 0;
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -668,8 +679,6 @@ static int smb2_set_property(struct power_supply *psy,
 {
 	struct smb2_chip *chip = power_supply_get_drvdata(psy);
 	int error = 0;
-
-	dev_info(chip->dev, "Setting property: %d", psp);
 
 	mutex_lock(&chip->reg_lock);
 
@@ -704,15 +713,6 @@ irqreturn_t smb2_handle_usb_plugin(int irq, void *data)
 	int rc;
 	unsigned int intrt_stat;
 
-	rc = regmap_read(chip->regmap, chip->base + INT_RT_STS, &intrt_stat);
-	if (rc < 0) {
-		dev_err(chip->dev,
-			"Couldn't read USB status from reg! ret=%d\n", rc);
-		return rc;
-	}
-
-	chip->usb_present = (bool)(intrt_stat & USBIN_PLUGIN_RT_STS_BIT);
-
 	power_supply_changed(chip->chg_psy);
 
 	schedule_delayed_work(&chip->status_change_work,
@@ -734,7 +734,7 @@ static const struct power_supply_desc smb2_psy_desc = {
 };
 
 /* Init sequence derived from downstream driver */
-static struct smb2_register smb2_init_seq[] = {
+static const struct smb2_register smb2_init_seq[] = {
 	{ .addr = AICL_RERUN_TIME_CFG_REG,
 	  .mask = AICL_RERUN_TIME_MASK,
 	  .val = 0 },
@@ -792,7 +792,7 @@ static int smb2_init_hw(struct smb2_chip *chip)
 	int rc, i;
 
 	for (i = 0; i < ARRAY_SIZE(smb2_init_seq); i++) {
-		dev_info(chip->dev, "%d: Writing 0x%02x to 0x%02x\n", i,
+		dev_dbg(chip->dev, "%d: Writing 0x%02x to 0x%02x\n", i,
 			 smb2_init_seq[i].val, smb2_init_seq[i].addr);
 		rc = regmap_update_bits(chip->regmap,
 					chip->base + smb2_init_seq[i].addr,
@@ -827,21 +827,17 @@ static int smb2_probe(struct platform_device *pdev)
 
 	chip->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!chip->regmap) {
-		dev_err(chip->dev, "failed to locate the regmap\n");
-		return -ENODEV;
+		return dev_err_probe(chip->dev, -ENODEV, "failed to locate the regmap\n");
 	}
 
 	rc = device_property_read_u32(chip->dev, "reg", &chip->base);
 	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read base address from dt: %d\n",
-			rc);
-		return rc;
+		return dev_err_probe(chip->dev, rc, "Couldn't read base address\n");
 	}
 
 	irq = of_irq_get_byname(pdev->dev.of_node, "usb-plugin");
 	if (irq < 0) {
-		dev_err(&pdev->dev, "Couldn't get irq usb-plugin byname\n");
-		return irq;
+		return dev_err_probe(&pdev->dev, irq, "Couldn't get irq usb-plugin byname\n");
 	}
 
 	rc = devm_request_threaded_irq(chip->dev, irq, NULL,
@@ -852,19 +848,20 @@ static int smb2_probe(struct platform_device *pdev)
 		return rc;
 	}
 
-	chip->usbin_v_chan = iio_channel_get(chip->dev, "usbin_v");
-	chip->usbin_i_chan = iio_channel_get(chip->dev, "usbin_i");
+	chip->usb_in_v_chan = iio_channel_get(chip->dev, "usbin_v");
+	chip->usb_in_i_chan = iio_channel_get(chip->dev, "usbin_i");
 
 	/* RRADC should probe before us, but just in case it doesn't */
-	if (PTR_ERR(chip->usbin_v_chan) == -EPROBE_DEFER ||
-	    PTR_ERR(chip->usbin_i_chan) == -EPROBE_DEFER) {
-		return -EPROBE_DEFER;
+	if (PTR_ERR(chip->usb_in_v_chan) == -EPROBE_DEFER ||
+	    PTR_ERR(chip->usb_in_i_chan) == -EPROBE_DEFER) {
+		return dev_err_probe(chip->dev, -EPROBE_DEFER,
+				     "Missing IIO device\n");
 	}
 
 	rc = smb2_init_hw(chip);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't init hw %d\n", rc);
-		return rc;
+		return dev_err_probe(chip->dev, rc, "Couldn't init hw\n");
 	}
 
 	supply_config.drv_data = chip;
@@ -873,14 +870,12 @@ static int smb2_probe(struct platform_device *pdev)
 	chip->chg_psy = devm_power_supply_register(chip->dev, &smb2_psy_desc,
 						   &supply_config);
 	if (IS_ERR(chip->chg_psy)) {
-		dev_err(&pdev->dev, "failed to register power supply\n");
-		return PTR_ERR(chip->chg_psy);
+		return dev_err_probe(&pdev->dev, PTR_ERR(chip->chg_psy), "failed to register power supply\n");
 	}
 
 	rc = power_supply_get_battery_info(chip->chg_psy, &chip->batt_info);
 	if (rc) {
-		dev_err(&pdev->dev, "Failed to get battery info: %d\n", rc);
-		return rc;
+		return dev_err_probe(&pdev->dev, rc, "Failed to get battery info\n");
 	}
 
 	INIT_DELAYED_WORK(&chip->status_change_work, smb2_status_change_work);
@@ -900,14 +895,6 @@ static int smb2_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int smb2_remove(struct platform_device *pdev)
-{
-	struct smb2_chip *chip = platform_get_drvdata(pdev);
-
-	power_supply_put_battery_info(chip->chg_psy, chip->batt_info);
-	return 0;
-}
-
 static const struct of_device_id fg_match_id_table[] = {
 	{ .compatible = "qcom,pmi8998-charger" },
 	{ /* sentinal */ }
@@ -916,7 +903,6 @@ MODULE_DEVICE_TABLE(of, fg_match_id_table);
 
 static struct platform_driver qcom_spmi_smb2 = {
 	.probe = smb2_probe,
-	.remove = smb2_remove,
 	.driver = {
 		.name = "qcom-pmi8998-charger",
 		.of_match_table = fg_match_id_table,
