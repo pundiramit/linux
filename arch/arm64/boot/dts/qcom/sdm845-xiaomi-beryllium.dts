@@ -110,6 +110,14 @@
 		};
 	};
 
+	battery: battery {
+		compatible = "simple-battery";
+
+		charge-full-design-microamp-hours = <4000000>;
+		voltage-min-design-microvolt = <3400000>;
+		voltage-max-design-microvolt = <4400000>;
+	};
+
 	vreg_s4a_1p8: vreg-s4a-1p8 {
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_s4a_1p8";
@@ -381,6 +389,11 @@
 	qcom,switching-freq = <600>;
 	qcom,external-pfet;
 	qcom,cabc;
+};
+
+&pmi8998_charger {
+	status = "okay";
+	monitored-battery = <&battery>;
 };
 
 &pm8998_pon {
