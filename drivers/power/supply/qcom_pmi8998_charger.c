@@ -22,299 +22,304 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 
-#define BATTERY_CHARGER_STATUS_2_REG			0x07
-#define INPUT_CURRENT_LIMITED_BIT			BIT(7)
-#define CHARGER_ERROR_STATUS_SFT_EXPIRE_BIT		BIT(6)
-#define CHARGER_ERROR_STATUS_BAT_OV_BIT			BIT(5)
-#define CHARGER_ERROR_STATUS_BAT_TERM_MISSING_BIT	BIT(4)
-#define BAT_TEMP_STATUS_MASK				GENMASK(3, 0)
-#define BAT_TEMP_STATUS_SOFT_LIMIT_MASK			GENMASK(3, 2)
-#define BAT_TEMP_STATUS_HOT_SOFT_LIMIT_BIT		BIT(3)
-#define BAT_TEMP_STATUS_COLD_SOFT_LIMIT_BIT		BIT(2)
-#define BAT_TEMP_STATUS_TOO_HOT_BIT			BIT(1)
-#define BAT_TEMP_STATUS_TOO_COLD_BIT			BIT(0)
+#define BATTERY_CHARGER_STATUS_2_REG		  0x07
+#define INPUT_CURRENT_LIMITED_BIT		  BIT(7)
+#define CHARGER_ERROR_STATUS_SFT_EXPIRE_BIT	  BIT(6)
+#define CHARGER_ERROR_STATUS_BAT_OV_BIT		  BIT(5)
+#define CHARGER_ERROR_STATUS_BAT_TERM_MISSING_BIT BIT(4)
+#define BAT_TEMP_STATUS_MASK			  GENMASK(3, 0)
+#define BAT_TEMP_STATUS_SOFT_LIMIT_MASK		  GENMASK(3, 2)
+#define BAT_TEMP_STATUS_HOT_SOFT_LIMIT_BIT	  BIT(3)
+#define BAT_TEMP_STATUS_COLD_SOFT_LIMIT_BIT	  BIT(2)
+#define BAT_TEMP_STATUS_TOO_HOT_BIT		  BIT(1)
+#define BAT_TEMP_STATUS_TOO_COLD_BIT		  BIT(0)
 
-#define BATTERY_CHARGER_STATUS_7_REG			0x0D
-#define ENABLE_TRICKLE_BIT				BIT(7)
-#define ENABLE_PRE_CHARGING_BIT				BIT(6)
-#define ENABLE_FAST_CHARGING_BIT			BIT(5)
-#define ENABLE_FULLON_MODE_BIT				BIT(4)
-#define TOO_COLD_ADC_BIT				BIT(3)
-#define TOO_HOT_ADC_BIT					BIT(2)
-#define HOT_SL_ADC_BIT					BIT(1)
-#define COLD_SL_ADC_BIT					BIT(0)
+#define BATTERY_CHARGER_STATUS_7_REG		  0x0D
+#define ENABLE_TRICKLE_BIT			  BIT(7)
+#define ENABLE_PRE_CHARGING_BIT			  BIT(6)
+#define ENABLE_FAST_CHARGING_BIT		  BIT(5)
+#define ENABLE_FULLON_MODE_BIT			  BIT(4)
+#define TOO_COLD_ADC_BIT			  BIT(3)
+#define TOO_HOT_ADC_BIT				  BIT(2)
+#define HOT_SL_ADC_BIT				  BIT(1)
+#define COLD_SL_ADC_BIT				  BIT(0)
 
-#define CHARGING_ENABLE_CMD_REG				0x42
-#define CHARGING_ENABLE_CMD_BIT				BIT(0)
+#define CHARGING_ENABLE_CMD_REG			  0x42
+#define CHARGING_ENABLE_CMD_BIT			  BIT(0)
 
-#define CHGR_CFG2_REG					0x51
-#define CHG_EN_SRC_BIT					BIT(7)
-#define CHG_EN_POLARITY_BIT				BIT(6)
-#define PRETOFAST_TRANSITION_CFG_BIT			BIT(5)
-#define BAT_OV_ECC_BIT					BIT(4)
-#define I_TERM_BIT					BIT(3)
-#define AUTO_RECHG_BIT					BIT(2)
-#define EN_ANALOG_DROP_IN_VBATT_BIT			BIT(1)
-#define CHARGER_INHIBIT_BIT				BIT(0)
+#define CHGR_CFG2_REG				  0x51
+#define CHG_EN_SRC_BIT				  BIT(7)
+#define CHG_EN_POLARITY_BIT			  BIT(6)
+#define PRETOFAST_TRANSITION_CFG_BIT		  BIT(5)
+#define BAT_OV_ECC_BIT				  BIT(4)
+#define I_TERM_BIT				  BIT(3)
+#define AUTO_RECHG_BIT				  BIT(2)
+#define EN_ANALOG_DROP_IN_VBATT_BIT		  BIT(1)
+#define CHARGER_INHIBIT_BIT			  BIT(0)
 
-#define FAST_CHARGE_CURRENT_CFG_REG			0x61
-#define FAST_CHARGE_CURRENT_SETTING_MASK		GENMASK(7, 0)
+#define FAST_CHARGE_CURRENT_CFG_REG		  0x61
+#define FAST_CHARGE_CURRENT_SETTING_MASK	  GENMASK(7, 0)
 
-#define FLOAT_VOLTAGE_CFG_REG				0x70
-#define FLOAT_VOLTAGE_SETTING_MASK			GENMASK(7, 0)
+#define FLOAT_VOLTAGE_CFG_REG			  0x70
+#define FLOAT_VOLTAGE_SETTING_MASK		  GENMASK(7, 0)
 
-#define FG_UPDATE_CFG_2_SEL_REG				0x7D
-#define SOC_LT_OTG_THRESH_SEL_BIT			BIT(3)
-#define SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT		BIT(2)
-#define VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT		BIT(1)
-#define IBT_LT_CHG_TERM_THRESH_SEL_BIT			BIT(0)
+#define FG_UPDATE_CFG_2_SEL_REG			  0x7D
+#define SOC_LT_OTG_THRESH_SEL_BIT		  BIT(3)
+#define SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT	  BIT(2)
+#define VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT	  BIT(1)
+#define IBT_LT_CHG_TERM_THRESH_SEL_BIT		  BIT(0)
 
-#define JEITA_EN_CFG_REG				0x90
-#define JEITA_EN_HARDLIMIT_BIT				BIT(4)
-#define JEITA_EN_HOT_SL_FCV_BIT				BIT(3)
-#define JEITA_EN_COLD_SL_FCV_BIT			BIT(2)
-#define JEITA_EN_HOT_SL_CCC_BIT				BIT(1)
-#define JEITA_EN_COLD_SL_CCC_BIT			BIT(0)
+#define JEITA_EN_CFG_REG			  0x90
+#define JEITA_EN_HARDLIMIT_BIT			  BIT(4)
+#define JEITA_EN_HOT_SL_FCV_BIT			  BIT(3)
+#define JEITA_EN_COLD_SL_FCV_BIT		  BIT(2)
+#define JEITA_EN_HOT_SL_CCC_BIT			  BIT(1)
+#define JEITA_EN_COLD_SL_CCC_BIT		  BIT(0)
 
-#define INT_RT_STS					0x310
-#define TYPE_C_CHANGE_RT_STS_BIT			BIT(7)
-#define USBIN_ICL_CHANGE_RT_STS_BIT			BIT(6)
-#define USBIN_SOURCE_CHANGE_RT_STS_BIT			BIT(5)
-#define USBIN_PLUGIN_RT_STS_BIT				BIT(4)
-#define USBIN_OV_RT_STS_BIT				BIT(3)
-#define USBIN_UV_RT_STS_BIT				BIT(2)
-#define USBIN_LT_3P6V_RT_STS_BIT			BIT(1)
-#define USBIN_COLLAPSE_RT_STS_BIT			BIT(0)
+#define INT_RT_STS				  0x310
+#define TYPE_C_CHANGE_RT_STS_BIT		  BIT(7)
+#define USBIN_ICL_CHANGE_RT_STS_BIT		  BIT(6)
+#define USBIN_SOURCE_CHANGE_RT_STS_BIT		  BIT(5)
+#define USBIN_PLUGIN_RT_STS_BIT			  BIT(4)
+#define USBIN_OV_RT_STS_BIT			  BIT(3)
+#define USBIN_UV_RT_STS_BIT			  BIT(2)
+#define USBIN_LT_3P6V_RT_STS_BIT		  BIT(1)
+#define USBIN_COLLAPSE_RT_STS_BIT		  BIT(0)
 
-#define BATTERY_CHARGER_STATUS_1_REG			0x06
-#define BVR_INITIAL_RAMP_BIT				BIT(7)
-#define CC_SOFT_TERMINATE_BIT				BIT(6)
-#define STEP_CHARGING_STATUS_SHIFT			3
-#define STEP_CHARGING_STATUS_MASK			GENMASK(5, 3)
-#define BATTERY_CHARGER_STATUS_MASK			GENMASK(2, 0)
+#define BATTERY_CHARGER_STATUS_1_REG		  0x06
+#define BVR_INITIAL_RAMP_BIT			  BIT(7)
+#define CC_SOFT_TERMINATE_BIT			  BIT(6)
+#define STEP_CHARGING_STATUS_SHIFT		  3
+#define STEP_CHARGING_STATUS_MASK		  GENMASK(5, 3)
+#define BATTERY_CHARGER_STATUS_MASK		  GENMASK(2, 0)
 
-#define BATTERY_HEALTH_STATUS_REG			0x07
+#define BATTERY_HEALTH_STATUS_REG		  0x07
 
-#define OTG_CFG_REG					0x153
-#define OTG_RESERVED_MASK				GENMASK(7, 6)
-#define DIS_OTG_ON_TLIM_BIT				BIT(5)
-#define QUICKSTART_OTG_FASTROLESWAP_BIT			BIT(4)
-#define INCREASE_DFP_TIME_BIT				BIT(3)
-#define ENABLE_OTG_IN_DEBUG_MODE_BIT			BIT(2)
-#define OTG_EN_SRC_CFG_BIT				BIT(1)
-#define CONCURRENT_MODE_CFG_BIT				BIT(0)
+#define OTG_CFG_REG				  0x153
+#define OTG_RESERVED_MASK			  GENMASK(7, 6)
+#define DIS_OTG_ON_TLIM_BIT			  BIT(5)
+#define QUICKSTART_OTG_FASTROLESWAP_BIT		  BIT(4)
+#define INCREASE_DFP_TIME_BIT			  BIT(3)
+#define ENABLE_OTG_IN_DEBUG_MODE_BIT		  BIT(2)
+#define OTG_EN_SRC_CFG_BIT			  BIT(1)
+#define CONCURRENT_MODE_CFG_BIT			  BIT(0)
 
-#define OTG_ENG_OTG_CFG_REG				0x1C0
-#define ENG_BUCKBOOST_HALT1_8_MODE_BIT			BIT(0)
+#define OTG_ENG_OTG_CFG_REG			  0x1C0
+#define ENG_BUCKBOOST_HALT1_8_MODE_BIT		  BIT(0)
 
-#define APSD_STATUS_REG					0x307
-#define APSD_STATUS_7_BIT				BIT(7)
-#define HVDCP_CHECK_TIMEOUT_BIT				BIT(6)
-#define SLOW_PLUGIN_TIMEOUT_BIT				BIT(5)
-#define ENUMERATION_DONE_BIT				BIT(4)
-#define VADP_CHANGE_DONE_AFTER_AUTH_BIT			BIT(3)
-#define QC_AUTH_DONE_STATUS_BIT				BIT(2)
-#define QC_CHARGER_BIT					BIT(1)
-#define APSD_DTC_STATUS_DONE_BIT			BIT(0)
+#define APSD_STATUS_REG				  0x307
+#define APSD_STATUS_7_BIT			  BIT(7)
+#define HVDCP_CHECK_TIMEOUT_BIT			  BIT(6)
+#define SLOW_PLUGIN_TIMEOUT_BIT			  BIT(5)
+#define ENUMERATION_DONE_BIT			  BIT(4)
+#define VADP_CHANGE_DONE_AFTER_AUTH_BIT		  BIT(3)
+#define QC_AUTH_DONE_STATUS_BIT			  BIT(2)
+#define QC_CHARGER_BIT				  BIT(1)
+#define APSD_DTC_STATUS_DONE_BIT		  BIT(0)
 
-#define APSD_RESULT_STATUS_REG				0x308
-#define ICL_OVERRIDE_LATCH_BIT				BIT(7)
-#define APSD_RESULT_STATUS_MASK				GENMASK(6, 0)
-#define QC_3P0_BIT					BIT(6)
-#define QC_2P0_BIT					BIT(5)
-#define FLOAT_CHARGER_BIT				BIT(4)
-#define DCP_CHARGER_BIT					BIT(3)
-#define CDP_CHARGER_BIT					BIT(2)
-#define OCP_CHARGER_BIT					BIT(1)
-#define SDP_CHARGER_BIT					BIT(0)
+#define APSD_RESULT_STATUS_REG			  0x308
+#define ICL_OVERRIDE_LATCH_BIT			  BIT(7)
+#define APSD_RESULT_STATUS_MASK			  GENMASK(6, 0)
+#define QC_3P0_BIT				  BIT(6)
+#define QC_2P0_BIT				  BIT(5)
+#define FLOAT_CHARGER_BIT			  BIT(4)
+#define DCP_CHARGER_BIT				  BIT(3)
+#define CDP_CHARGER_BIT				  BIT(2)
+#define OCP_CHARGER_BIT				  BIT(1)
+#define SDP_CHARGER_BIT				  BIT(0)
 
-#define TYPE_C_STATUS_1_REG				0x30B
-#define UFP_TYPEC_MASK					GENMASK(7, 5)
-#define UFP_TYPEC_RDSTD_BIT				BIT(7)
-#define UFP_TYPEC_RD1P5_BIT				BIT(6)
-#define UFP_TYPEC_RD3P0_BIT				BIT(5)
-#define UFP_TYPEC_FMB_255K_BIT				BIT(4)
-#define UFP_TYPEC_FMB_301K_BIT				BIT(3)
-#define UFP_TYPEC_FMB_523K_BIT				BIT(2)
-#define UFP_TYPEC_FMB_619K_BIT				BIT(1)
-#define UFP_TYPEC_OPEN_OPEN_BIT				BIT(0)
+#define TYPE_C_STATUS_1_REG			  0x30B
+#define UFP_TYPEC_MASK				  GENMASK(7, 5)
+#define UFP_TYPEC_RDSTD_BIT			  BIT(7)
+#define UFP_TYPEC_RD1P5_BIT			  BIT(6)
+#define UFP_TYPEC_RD3P0_BIT			  BIT(5)
+#define UFP_TYPEC_FMB_255K_BIT			  BIT(4)
+#define UFP_TYPEC_FMB_301K_BIT			  BIT(3)
+#define UFP_TYPEC_FMB_523K_BIT			  BIT(2)
+#define UFP_TYPEC_FMB_619K_BIT			  BIT(1)
+#define UFP_TYPEC_OPEN_OPEN_BIT			  BIT(0)
 
-#define TYPE_C_STATUS_2_REG				0x30C
-#define DFP_RA_OPEN_BIT					BIT(7)
-#define TIMER_STAGE_BIT					BIT(6)
-#define EXIT_UFP_MODE_BIT				BIT(5)
-#define EXIT_DFP_MODE_BIT				BIT(4)
-#define DFP_TYPEC_MASK					GENMASK(3, 0)
-#define DFP_RD_OPEN_BIT					BIT(3)
-#define DFP_RD_RA_VCONN_BIT				BIT(2)
-#define DFP_RD_RD_BIT					BIT(1)
-#define DFP_RA_RA_BIT					BIT(0)
+#define TYPE_C_STATUS_2_REG			  0x30C
+#define DFP_RA_OPEN_BIT				  BIT(7)
+#define TIMER_STAGE_BIT				  BIT(6)
+#define EXIT_UFP_MODE_BIT			  BIT(5)
+#define EXIT_DFP_MODE_BIT			  BIT(4)
+#define DFP_TYPEC_MASK				  GENMASK(3, 0)
+#define DFP_RD_OPEN_BIT				  BIT(3)
+#define DFP_RD_RA_VCONN_BIT			  BIT(2)
+#define DFP_RD_RD_BIT				  BIT(1)
+#define DFP_RA_RA_BIT				  BIT(0)
 
-#define TYPE_C_STATUS_3_REG				0x30D
-#define ENABLE_BANDGAP_BIT				BIT(7)
-#define U_USB_GND_NOVBUS_BIT				BIT(6)
-#define U_USB_FLOAT_NOVBUS_BIT				BIT(5)
-#define U_USB_GND_BIT					BIT(4)
-#define U_USB_FMB1_BIT					BIT(3)
-#define U_USB_FLOAT1_BIT				BIT(2)
-#define U_USB_FMB2_BIT					BIT(1)
-#define U_USB_FLOAT2_BIT				BIT(0)
+#define TYPE_C_STATUS_3_REG			  0x30D
+#define ENABLE_BANDGAP_BIT			  BIT(7)
+#define U_USB_GND_NOVBUS_BIT			  BIT(6)
+#define U_USB_FLOAT_NOVBUS_BIT			  BIT(5)
+#define U_USB_GND_BIT				  BIT(4)
+#define U_USB_FMB1_BIT				  BIT(3)
+#define U_USB_FLOAT1_BIT			  BIT(2)
+#define U_USB_FMB2_BIT				  BIT(1)
+#define U_USB_FLOAT2_BIT			  BIT(0)
 
-#define TYPE_C_STATUS_4_REG				0x30E
-#define UFP_DFP_MODE_STATUS_BIT				BIT(7)
-#define TYPEC_VBUS_STATUS_BIT				BIT(6)
-#define TYPEC_VBUS_ERROR_STATUS_BIT			BIT(5)
-#define TYPEC_DEBOUNCE_DONE_STATUS_BIT			BIT(4)
-#define TYPEC_UFP_AUDIO_ADAPT_STATUS_BIT		BIT(3)
-#define TYPEC_VCONN_OVERCURR_STATUS_BIT			BIT(2)
-#define CC_ORIENTATION_BIT				BIT(1)
-#define CC_ATTACHED_BIT					BIT(0)
+#define TYPE_C_STATUS_4_REG			  0x30E
+#define UFP_DFP_MODE_STATUS_BIT			  BIT(7)
+#define TYPEC_VBUS_STATUS_BIT			  BIT(6)
+#define TYPEC_VBUS_ERROR_STATUS_BIT		  BIT(5)
+#define TYPEC_DEBOUNCE_DONE_STATUS_BIT		  BIT(4)
+#define TYPEC_UFP_AUDIO_ADAPT_STATUS_BIT	  BIT(3)
+#define TYPEC_VCONN_OVERCURR_STATUS_BIT		  BIT(2)
+#define CC_ORIENTATION_BIT			  BIT(1)
+#define CC_ATTACHED_BIT				  BIT(0)
 
-#define TYPE_C_STATUS_5_REG				0x30F
-#define TRY_SOURCE_FAILED_BIT				BIT(6)
-#define TRY_SINK_FAILED_BIT				BIT(5)
-#define TIMER_STAGE_2_BIT				BIT(4)
-#define TYPEC_LEGACY_CABLE_STATUS_BIT			BIT(3)
-#define TYPEC_NONCOMP_LEGACY_CABLE_STATUS_BIT		BIT(2)
-#define TYPEC_TRYSOURCE_DETECT_STATUS_BIT		BIT(1)
-#define TYPEC_TRYSINK_DETECT_STATUS_BIT			BIT(0)
+#define TYPE_C_STATUS_5_REG			  0x30F
+#define TRY_SOURCE_FAILED_BIT			  BIT(6)
+#define TRY_SINK_FAILED_BIT			  BIT(5)
+#define TIMER_STAGE_2_BIT			  BIT(4)
+#define TYPEC_LEGACY_CABLE_STATUS_BIT		  BIT(3)
+#define TYPEC_NONCOMP_LEGACY_CABLE_STATUS_BIT	  BIT(2)
+#define TYPEC_TRYSOURCE_DETECT_STATUS_BIT	  BIT(1)
+#define TYPEC_TRYSINK_DETECT_STATUS_BIT		  BIT(0)
 
-#define CMD_APSD_REG					0x341
-#define ICL_OVERRIDE_BIT				BIT(1)
-#define APSD_RERUN_BIT					BIT(0)
+#define CMD_APSD_REG				  0x341
+#define ICL_OVERRIDE_BIT			  BIT(1)
+#define APSD_RERUN_BIT				  BIT(0)
 
-#define TYPE_C_CFG_REG					0x358
-#define APSD_START_ON_CC_BIT				BIT(7)
-#define WAIT_FOR_APSD_BIT				BIT(6)
-#define FACTORY_MODE_DETECTION_EN_BIT			BIT(5)
-#define FACTORY_MODE_ICL_3A_4A_BIT			BIT(4)
-#define FACTORY_MODE_DIS_CHGING_CFG_BIT			BIT(3)
-#define SUSPEND_NON_COMPLIANT_CFG_BIT			BIT(2)
-#define VCONN_OC_CFG_BIT				BIT(1)
-#define TYPE_C_OR_U_USB_BIT				BIT(0)
+#define TYPE_C_CFG_REG				  0x358
+#define APSD_START_ON_CC_BIT			  BIT(7)
+#define WAIT_FOR_APSD_BIT			  BIT(6)
+#define FACTORY_MODE_DETECTION_EN_BIT		  BIT(5)
+#define FACTORY_MODE_ICL_3A_4A_BIT		  BIT(4)
+#define FACTORY_MODE_DIS_CHGING_CFG_BIT		  BIT(3)
+#define SUSPEND_NON_COMPLIANT_CFG_BIT		  BIT(2)
+#define VCONN_OC_CFG_BIT			  BIT(1)
+#define TYPE_C_OR_U_USB_BIT			  BIT(0)
 
-#define TYPE_C_CFG_2_REG				0x359
-#define TYPE_C_DFP_CURRSRC_MODE_BIT			BIT(7)
-#define DFP_CC_1P4V_OR_1P6V_BIT				BIT(6)
-#define VCONN_SOFTSTART_CFG_MASK			GENMASK(5, 4)
-#define EN_TRY_SOURCE_MODE_BIT				BIT(3)
-#define USB_FACTORY_MODE_ENABLE_BIT			BIT(2)
-#define TYPE_C_UFP_MODE_BIT				BIT(1)
-#define EN_80UA_180UA_CUR_SOURCE_BIT			BIT(0)
+#define TYPE_C_CFG_2_REG			  0x359
+#define TYPE_C_DFP_CURRSRC_MODE_BIT		  BIT(7)
+#define DFP_CC_1P4V_OR_1P6V_BIT			  BIT(6)
+#define VCONN_SOFTSTART_CFG_MASK		  GENMASK(5, 4)
+#define EN_TRY_SOURCE_MODE_BIT			  BIT(3)
+#define USB_FACTORY_MODE_ENABLE_BIT		  BIT(2)
+#define TYPE_C_UFP_MODE_BIT			  BIT(1)
+#define EN_80UA_180UA_CUR_SOURCE_BIT		  BIT(0)
 
-#define TYPE_C_CFG_3_REG				0x35A
-#define TVBUS_DEBOUNCE_BIT				BIT(7)
-#define TYPEC_LEGACY_CABLE_INT_EN_BIT			BIT(6)
-#define TYPEC_NONCOMPLIANT_LEGACY_CABLE_INT_EN_B	BIT(5)
-#define TYPEC_TRYSOURCE_DETECT_INT_EN_BIT		BIT(4)
-#define TYPEC_TRYSINK_DETECT_INT_EN_BIT			BIT(3)
-#define EN_TRYSINK_MODE_BIT				BIT(2)
-#define EN_LEGACY_CABLE_DETECTION_BIT			BIT(1)
-#define ALLOW_PD_DRING_UFP_TCCDB_BIT			BIT(0)
+#define TYPE_C_CFG_3_REG			  0x35A
+#define TVBUS_DEBOUNCE_BIT			  BIT(7)
+#define TYPEC_LEGACY_CABLE_INT_EN_BIT		  BIT(6)
+#define TYPEC_NONCOMPLIANT_LEGACY_CABLE_INT_EN_B  BIT(5)
+#define TYPEC_TRYSOURCE_DETECT_INT_EN_BIT	  BIT(4)
+#define TYPEC_TRYSINK_DETECT_INT_EN_BIT		  BIT(3)
+#define EN_TRYSINK_MODE_BIT			  BIT(2)
+#define EN_LEGACY_CABLE_DETECTION_BIT		  BIT(1)
+#define ALLOW_PD_DRING_UFP_TCCDB_BIT		  BIT(0)
 
-#define USBIN_OPTIONS_1_CFG_REG				0x362
-#define CABLE_R_SEL_BIT					BIT(7)
-#define HVDCP_AUTH_ALG_EN_CFG_BIT			BIT(6)
-#define HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT		BIT(5)
-#define INPUT_PRIORITY_BIT				BIT(4)
-#define AUTO_SRC_DETECT_BIT				BIT(3)
-#define HVDCP_EN_BIT					BIT(2)
-#define VADP_INCREMENT_VOLTAGE_LIMIT_BIT		BIT(1)
-#define VADP_TAPER_TIMER_EN_BIT				BIT(0)
+#define USBIN_OPTIONS_1_CFG_REG			  0x362
+#define CABLE_R_SEL_BIT				  BIT(7)
+#define HVDCP_AUTH_ALG_EN_CFG_BIT		  BIT(6)
+#define HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT	  BIT(5)
+#define INPUT_PRIORITY_BIT			  BIT(4)
+#define AUTO_SRC_DETECT_BIT			  BIT(3)
+#define HVDCP_EN_BIT				  BIT(2)
+#define VADP_INCREMENT_VOLTAGE_LIMIT_BIT	  BIT(1)
+#define VADP_TAPER_TIMER_EN_BIT			  BIT(0)
 
-#define USBIN_OPTIONS_2_CFG_REG				0x363
-#define WIPWR_RST_EUD_CFG_BIT				BIT(7)
-#define SWITCHER_START_CFG_BIT				BIT(6)
-#define DCD_TIMEOUT_SEL_BIT				BIT(5)
-#define OCD_CURRENT_SEL_BIT				BIT(4)
-#define SLOW_PLUGIN_TIMER_EN_CFG_BIT			BIT(3)
-#define FLOAT_OPTIONS_MASK				GENMASK(2, 0)
-#define FLOAT_DIS_CHGING_CFG_BIT			BIT(2)
-#define SUSPEND_FLOAT_CFG_BIT				BIT(1)
-#define FORCE_FLOAT_SDP_CFG_BIT				BIT(0)
+#define USBIN_OPTIONS_2_CFG_REG			  0x363
+#define WIPWR_RST_EUD_CFG_BIT			  BIT(7)
+#define SWITCHER_START_CFG_BIT			  BIT(6)
+#define DCD_TIMEOUT_SEL_BIT			  BIT(5)
+#define OCD_CURRENT_SEL_BIT			  BIT(4)
+#define SLOW_PLUGIN_TIMER_EN_CFG_BIT		  BIT(3)
+#define FLOAT_OPTIONS_MASK			  GENMASK(2, 0)
+#define FLOAT_DIS_CHGING_CFG_BIT		  BIT(2)
+#define SUSPEND_FLOAT_CFG_BIT			  BIT(1)
+#define FORCE_FLOAT_SDP_CFG_BIT			  BIT(0)
 
-#define TAPER_TIMER_SEL_CFG_REG				0x364
-#define TYPEC_SPARE_CFG_BIT				BIT(7)
-#define TYPEC_DRP_DFP_TIME_CFG_BIT			BIT(5)
-#define TAPER_TIMER_SEL_MASK				GENMASK(1, 0)
+#define TAPER_TIMER_SEL_CFG_REG			  0x364
+#define TYPEC_SPARE_CFG_BIT			  BIT(7)
+#define TYPEC_DRP_DFP_TIME_CFG_BIT		  BIT(5)
+#define TAPER_TIMER_SEL_MASK			  GENMASK(1, 0)
 
-#define USBIN_LOAD_CFG_REG				0x365
-#define USBIN_OV_CH_LOAD_OPTION_BIT			BIT(7)
-#define ICL_OVERRIDE_AFTER_APSD_BIT			BIT(4)
+#define USBIN_LOAD_CFG_REG			  0x365
+#define USBIN_OV_CH_LOAD_OPTION_BIT		  BIT(7)
+#define ICL_OVERRIDE_AFTER_APSD_BIT		  BIT(4)
 
-#define USBIN_ICL_OPTIONS_REG				0x366
-#define CFG_USB3P0_SEL_BIT				BIT(2)
-#define USB51_MODE_BIT					BIT(1)
-#define USBIN_MODE_CHG_BIT				BIT(0)
+#define USBIN_ICL_OPTIONS_REG			  0x366
+#define CFG_USB3P0_SEL_BIT			  BIT(2)
+#define USB51_MODE_BIT				  BIT(1)
+#define USBIN_MODE_CHG_BIT			  BIT(0)
 
-#define TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG		0x368
-#define EXIT_SNK_BASED_ON_CC_BIT			BIT(7)
-#define VCONN_EN_ORIENTATION_BIT			BIT(6)
-#define TYPEC_VCONN_OVERCURR_INT_EN_BIT			BIT(5)
-#define VCONN_EN_SRC_BIT				BIT(4)
-#define VCONN_EN_VALUE_BIT				BIT(3)
-#define TYPEC_POWER_ROLE_CMD_MASK			GENMASK(2, 0)
-#define UFP_EN_CMD_BIT					BIT(2)
-#define DFP_EN_CMD_BIT					BIT(1)
-#define TYPEC_DISABLE_CMD_BIT				BIT(0)
+#define TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG	  0x368
+#define EXIT_SNK_BASED_ON_CC_BIT		  BIT(7)
+#define VCONN_EN_ORIENTATION_BIT		  BIT(6)
+#define TYPEC_VCONN_OVERCURR_INT_EN_BIT		  BIT(5)
+#define VCONN_EN_SRC_BIT			  BIT(4)
+#define VCONN_EN_VALUE_BIT			  BIT(3)
+#define TYPEC_POWER_ROLE_CMD_MASK		  GENMASK(2, 0)
+#define UFP_EN_CMD_BIT				  BIT(2)
+#define DFP_EN_CMD_BIT				  BIT(1)
+#define TYPEC_DISABLE_CMD_BIT			  BIT(0)
 
-#define USBIN_CURRENT_LIMIT_CFG_REG			0x370
-#define USBIN_CURRENT_LIMIT_MASK			GENMASK(7, 0)
+#define USBIN_CURRENT_LIMIT_CFG_REG		  0x370
+#define USBIN_CURRENT_LIMIT_MASK		  GENMASK(7, 0)
 
-#define USBIN_AICL_OPTIONS_CFG_REG			0x380
-#define SUSPEND_ON_COLLAPSE_USBIN_BIT			BIT(7)
-#define USBIN_AICL_HDC_EN_BIT				BIT(6)
-#define USBIN_AICL_START_AT_MAX_BIT			BIT(5)
-#define USBIN_AICL_RERUN_EN_BIT				BIT(4)
-#define USBIN_AICL_ADC_EN_BIT				BIT(3)
-#define USBIN_AICL_EN_BIT				BIT(2)
-#define USBIN_HV_COLLAPSE_RESPONSE_BIT			BIT(1)
-#define USBIN_LV_COLLAPSE_RESPONSE_BIT			BIT(0)
+#define USBIN_AICL_OPTIONS_CFG_REG		  0x380
+#define SUSPEND_ON_COLLAPSE_USBIN_BIT		  BIT(7)
+#define USBIN_AICL_HDC_EN_BIT			  BIT(6)
+#define USBIN_AICL_START_AT_MAX_BIT		  BIT(5)
+#define USBIN_AICL_RERUN_EN_BIT			  BIT(4)
+#define USBIN_AICL_ADC_EN_BIT			  BIT(3)
+#define USBIN_AICL_EN_BIT			  BIT(2)
+#define USBIN_HV_COLLAPSE_RESPONSE_BIT		  BIT(1)
+#define USBIN_LV_COLLAPSE_RESPONSE_BIT		  BIT(0)
 
-#define DC_ENG_SSUPPLY_CFG2_REG				0x4C1
-#define ENG_SSUPPLY_IVREF_OTG_SS_MASK			GENMASK(2, 0)
-#define OTG_SS_SLOW					0x3
+#define DC_ENG_SSUPPLY_CFG2_REG			  0x4C1
+#define ENG_SSUPPLY_IVREF_OTG_SS_MASK		  GENMASK(2, 0)
+#define OTG_SS_SLOW				  0x3
 
-#define DCIN_AICL_REF_SEL_CFG_REG			0x481
-#define DCIN_CONT_AICL_THRESHOLD_CFG_MASK		GENMASK(5, 0)
+#define DCIN_AICL_REF_SEL_CFG_REG		  0x481
+#define DCIN_CONT_AICL_THRESHOLD_CFG_MASK	  GENMASK(5, 0)
 
-#define WI_PWR_OPTIONS_REG				0x495
-#define CHG_OK_BIT					BIT(7)
-#define WIPWR_UVLO_IRQ_OPT_BIT				BIT(6)
-#define BUCK_HOLDOFF_ENABLE_BIT				BIT(5)
-#define CHG_OK_HW_SW_SELECT_BIT				BIT(4)
-#define WIPWR_RST_ENABLE_BIT				BIT(3)
-#define DCIN_WIPWR_IRQ_SELECT_BIT			BIT(2)
-#define AICL_SWITCH_ENABLE_BIT				BIT(1)
-#define ZIN_ICL_ENABLE_BIT				BIT(0)
+#define WI_PWR_OPTIONS_REG			  0x495
+#define CHG_OK_BIT				  BIT(7)
+#define WIPWR_UVLO_IRQ_OPT_BIT			  BIT(6)
+#define BUCK_HOLDOFF_ENABLE_BIT			  BIT(5)
+#define CHG_OK_HW_SW_SELECT_BIT			  BIT(4)
+#define WIPWR_RST_ENABLE_BIT			  BIT(3)
+#define DCIN_WIPWR_IRQ_SELECT_BIT		  BIT(2)
+#define AICL_SWITCH_ENABLE_BIT			  BIT(1)
+#define ZIN_ICL_ENABLE_BIT			  BIT(0)
 
-#define ICL_STATUS_REG					0x607
-#define INPUT_CURRENT_LIMIT_MASK			GENMASK(7, 0)
+#define ICL_STATUS_REG				  0x607
+#define INPUT_CURRENT_LIMIT_MASK		  GENMASK(7, 0)
 
-#define POWER_PATH_STATUS_REG				0x60B
-#define P_PATH_INPUT_SS_DONE_BIT			BIT(7)
-#define P_PATH_USBIN_SUSPEND_STS_BIT			BIT(6)
-#define P_PATH_DCIN_SUSPEND_STS_BIT			BIT(5)
-#define P_PATH_USE_USBIN_BIT				BIT(4)
-#define P_PATH_USE_DCIN_BIT				BIT(3)
-#define P_PATH_POWER_PATH_MASK				GENMASK(2, 1)
-#define P_PATH_VALID_INPUT_POWER_SOURCE_STS_BIT		BIT(0)
+#define POWER_PATH_STATUS_REG			  0x60B
+#define P_PATH_INPUT_SS_DONE_BIT		  BIT(7)
+#define P_PATH_USBIN_SUSPEND_STS_BIT		  BIT(6)
+#define P_PATH_DCIN_SUSPEND_STS_BIT		  BIT(5)
+#define P_PATH_USE_USBIN_BIT			  BIT(4)
+#define P_PATH_USE_DCIN_BIT			  BIT(3)
+#define P_PATH_POWER_PATH_MASK			  GENMASK(2, 1)
+#define P_PATH_VALID_INPUT_POWER_SOURCE_STS_BIT	  BIT(0)
 
-#define WD_CFG_REG					0x651
-#define WATCHDOG_TRIGGER_AFP_EN_BIT			BIT(7)
-#define BARK_WDOG_INT_EN_BIT				BIT(6)
-#define BITE_WDOG_INT_EN_BIT				BIT(5)
-#define SFT_AFTER_WDOG_IRQ_MASK				GENMASK(4, 3)
-#define WDOG_IRQ_SFT_BIT				BIT(2)
-#define WDOG_TIMER_EN_ON_PLUGIN_BIT			BIT(1)
-#define WDOG_TIMER_EN_BIT				BIT(0)
+#define WD_CFG_REG				  0x651
+#define WATCHDOG_TRIGGER_AFP_EN_BIT		  BIT(7)
+#define BARK_WDOG_INT_EN_BIT			  BIT(6)
+#define BITE_WDOG_INT_EN_BIT			  BIT(5)
+#define SFT_AFTER_WDOG_IRQ_MASK			  GENMASK(4, 3)
+#define WDOG_IRQ_SFT_BIT			  BIT(2)
+#define WDOG_TIMER_EN_ON_PLUGIN_BIT		  BIT(1)
+#define WDOG_TIMER_EN_BIT			  BIT(0)
 
-#define AICL_RERUN_TIME_CFG_REG				0x661
-#define AICL_RERUN_TIME_MASK				GENMASK(1, 0)
+#define AICL_RERUN_TIME_CFG_REG			  0x661
+#define AICL_RERUN_TIME_MASK			  GENMASK(1, 0)
 
-#define SDP_CURRENT_UA					500000
-#define CDP_CURRENT_UA					1500000
-#define DCP_CURRENT_UA					1500000
+#define USBIN_CURRENT_25MA			  25000
+#define USBIN_CURRENT_100MA			  100000
+#define USBIN_CURRENT_150MA			  150000
+#define USBIN_CURRENT_500MA			  500000
+#define USBIN_CURRENT_900MA			  900000
+#define SDP_CURRENT_UA				  500000
+#define CDP_CURRENT_UA				  1500000
+#define DCP_CURRENT_UA				  1500000
 
 enum charger_status {
 	TRICKLE_CHARGE = 0,
@@ -502,10 +507,11 @@ static inline int smb2_get_current_limit(struct smb2_chip *chip,
 	return rc;
 }
 
-static inline int smb2_set_current_limit(struct smb2_chip *chip,
-					 unsigned int val)
+static int smb2_set_current_limit(struct smb2_chip *chip, unsigned int val)
 {
-	unsigned char val_raw;
+	unsigned char val_raw, icl_option;
+	unsigned int load_cfg;
+	int rc;
 
 	if (val > 4800000) {
 		dev_err(chip->dev,
@@ -513,6 +519,37 @@ static inline int smb2_set_current_limit(struct smb2_chip *chip,
 		return -EINVAL;
 	}
 	val_raw = val / 25000;
+
+	if (val == USBIN_CURRENT_100MA)
+		icl_option = 0;
+	else if (val == USBIN_CURRENT_150MA)
+		icl_option = CFG_USB3P0_SEL_BIT;
+	else if (val == USBIN_CURRENT_500MA)
+		icl_option = USB51_MODE_BIT;
+	else if (val == USBIN_CURRENT_900MA)
+		icl_option = CFG_USB3P0_SEL_BIT | USB51_MODE_BIT;
+	else if (val > USBIN_CURRENT_500MA)
+		icl_option = USBIN_MODE_CHG_BIT;
+
+	dev_info(chip->dev, "CA:: %s() icl_option = 0x%x\n", __func__,
+		 icl_option);
+	rc = regmap_update_bits(
+		chip->regmap, chip->base + USBIN_ICL_OPTIONS_REG,
+		CFG_USB3P0_SEL_BIT | USB51_MODE_BIT | USBIN_MODE_CHG_BIT,
+		icl_option);
+
+	if (icl_option && USBIN_MODE_CHG_BIT)
+		rc = rc ?: regmap_update_bits(chip->regmap,
+					       chip->base + USBIN_LOAD_CFG_REG,
+					       ICL_OVERRIDE_AFTER_APSD_BIT,
+					       ICL_OVERRIDE_AFTER_APSD_BIT);
+
+	if (rc < 0)
+		return rc;
+
+	regmap_read(chip->regmap, chip->base + USBIN_LOAD_CFG_REG, &load_cfg);
+	dev_info(chip->dev, "USBIN_LOAD_CFG_REG = 0x%x\n", load_cfg);
+
 	return regmap_write(chip->regmap,
 			    chip->base + USBIN_CURRENT_LIMIT_CFG_REG, val_raw);
 }
@@ -731,17 +768,17 @@ static const struct smb2_register smb2_init_seq[] = {
 	  .mask = USBIN_AICL_START_AT_MAX_BIT | USBIN_AICL_ADC_EN_BIT,
 	  .val = 0 },
 	/*
-     * By default configure us as an upstream facing port
-     * FIXME: for OTG we should set UFP_EN_CMD_BIT and DFP_EN_CMD_BIT both to 0
-     */
+	* By default configure us as an upstream facing port
+	* FIXME: for OTG we should set UFP_EN_CMD_BIT and DFP_EN_CMD_BIT both to 0
+	*/
 	{ .addr = TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 	  .mask = TYPEC_POWER_ROLE_CMD_MASK | VCONN_EN_SRC_BIT |
 		  VCONN_EN_VALUE_BIT,
 	  .val = VCONN_EN_SRC_BIT | UFP_EN_CMD_BIT },
 	/*
-     * disable Type-C factory mode and stay in Attached.SRC state when VCONN
-     * over-current happens
-     */
+	* disable Type-C factory mode and stay in Attached.SRC state when VCONN
+	* over-current happens
+	*/
 	{ .addr = TYPE_C_CFG_REG,
 	  .mask = FACTORY_MODE_DETECTION_EN_BIT | VCONN_OC_CFG_BIT,
 	  .val = 0 },
@@ -754,7 +791,7 @@ static const struct smb2_register smb2_init_seq[] = {
 	/* Enable automatic input current limit */
 	{ .addr = USBIN_AICL_OPTIONS_CFG_REG,
 	  .mask = USBIN_AICL_EN_BIT,
-	  .val = 1 },
+	  .val = USBIN_AICL_EN_BIT },
 	{ .addr = USBIN_OPTIONS_1_CFG_REG, .mask = HVDCP_EN_BIT, .val = 0 },
 	{ .addr = CHARGING_ENABLE_CMD_REG,
 	  .mask = CHARGING_ENABLE_CMD_BIT,
@@ -768,12 +805,12 @@ static const struct smb2_register smb2_init_seq[] = {
 	{ .addr = TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 	  .mask = UFP_EN_CMD_BIT,
 	  .val = UFP_EN_CMD_BIT },
-	/* Set the default SDP charger type to a 500ma USB 2.0 port
-     * and apply ICL override? (OnePlus 6 hack??)
-     */
+	/*
+	 * Set the default SDP charger type to a 500ma USB 2.0 port
+	 */
 	{ .addr = USBIN_ICL_OPTIONS_REG,
 	  .mask = USB51_MODE_BIT | USBIN_MODE_CHG_BIT,
-	  .val = USB51_MODE_BIT | USBIN_MODE_CHG_BIT },
+	  .val = USB51_MODE_BIT },
 };
 
 static int smb2_init_hw(struct smb2_chip *chip)
@@ -796,7 +833,7 @@ static int smb2_init_hw(struct smb2_chip *chip)
 		}
 	}
 
-	smb2_set_current_limit(chip, 1950 * 1000);
+	smb2_set_current_limit(chip, 500 * 1000);
 	return rc;
 }
 
