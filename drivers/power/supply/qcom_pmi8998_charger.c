@@ -35,6 +35,9 @@
 #define BAT_TEMP_STATUS_TOO_HOT_BIT			BIT(1)
 #define BAT_TEMP_STATUS_TOO_COLD_BIT			BIT(0)
 
+#define BATTERY_CHARGER_STATUS_4_REG			0x0A
+#define CHARGE_CURRENT_POST_JEITA_MASK			GENMASK(7, 0)
+
 #define BATTERY_CHARGER_STATUS_7_REG			0x0D
 #define ENABLE_TRICKLE_BIT				BIT(7)
 #define ENABLE_PRE_CHARGING_BIT				BIT(6)
@@ -304,6 +307,9 @@
 #define P_PATH_POWER_PATH_MASK				GENMASK(2, 1)
 #define P_PATH_VALID_INPUT_POWER_SOURCE_STS_BIT		BIT(0)
 
+#define BARK_BITE_WDOG_PET_REG				0x643
+#define BARK_BITE_WDOG_PET_BIT				BIT(0)
+
 #define WD_CFG_REG					0x651
 #define WATCHDOG_TRIGGER_AFP_EN_BIT			BIT(7)
 #define BARK_WDOG_INT_EN_BIT				BIT(6)
@@ -313,8 +319,23 @@
 #define WDOG_TIMER_EN_ON_PLUGIN_BIT			BIT(1)
 #define WDOG_TIMER_EN_BIT				BIT(0)
 
+#define SNARL_BARK_BITE_WD_CFG_REG			0x653
+#define BITE_WDOG_DISABLE_CHARGING_CFG_BIT		BIT(7)
+#define SNARL_WDOG_TIMEOUT_MASK				GENMASK(6, 4)
+#define BARK_WDOG_TIMEOUT_MASK				GENMASK(3, 2)
+#define BITE_WDOG_TIMEOUT_MASK				GENMASK(1, 0)
+
 #define AICL_RERUN_TIME_CFG_REG				0x661
 #define AICL_RERUN_TIME_MASK				GENMASK(1, 0)
+
+#define STAT_CFG_REG					0x690
+#define STAT_SW_OVERRIDE_VALUE_BIT			BIT(7)
+#define STAT_SW_OVERRIDE_CFG_BIT			BIT(6)
+#define STAT_PARALLEL_OFF_DG_CFG_MASK			GENMASK(5, 4)
+#define STAT_POLARITY_CFG_BIT				BIT(3)
+#define STAT_PARALLEL_CFG_BIT				BIT(2)
+#define STAT_FUNCTION_CFG_BIT				BIT(1)
+#define STAT_IRQ_PULSING_EN_BIT				BIT(0)
 
 #define USBIN_CURRENT_25MA				25000
 #define USBIN_CURRENT_100MA				100000
@@ -643,7 +664,7 @@ int smb2_get_prop_health(struct smb2_chip *chip, int *val)
 		return rc;
 	}
 
-	switch (stat & BATTERY_CHARGER_STATUS_MASK) {
+	switch (stat) {
 	case CHARGER_ERROR_STATUS_BAT_OV_BIT:
 		*val = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
 		return 0;
@@ -740,6 +761,16 @@ static int smb2_property_is_writable(struct power_supply *psy,
 	}
 }
 
+irqreturn_t smb2_handle_batt_overvoltage(int irq, void *data) {
+	struct smb2_chip *chip = data;
+
+	dev_err(chip->dev, "battery overvoltage\n");
+
+	power_supply_changed(chip->chg_psy);
+
+	return IRQ_HANDLED;
+}
+
 irqreturn_t smb2_handle_usb_plugin(int irq, void *data)
 {
 	struct smb2_chip *chip = data;
@@ -750,6 +781,39 @@ irqreturn_t smb2_handle_usb_plugin(int irq, void *data)
 
 	schedule_delayed_work(&chip->status_change_work,
 			      msecs_to_jiffies(1000));
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t smb2_handle_usb_icl_change(int irq, void *data)
+{
+	struct smb2_chip *chip = data;
+	int rc;
+	unsigned int settled_icl_ua;
+
+	rc = smb2_get_current_limit(chip, &settled_icl_ua);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read ICL status rc=%d\n", rc);
+		return IRQ_HANDLED;
+	}
+
+	dev_info(chip->dev, "ICL changed to %duA\n", settled_icl_ua);
+	power_supply_changed(chip->chg_psy);
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t smb2_handle_wdog_bark(int irq, void *data)
+{
+	struct smb2_chip *chip = data;
+	int rc;
+
+	dev_info(chip->dev, "IRQ: watchdog bark received\n");
+	power_supply_changed(chip->chg_psy);
+
+	rc = regmap_write(chip->regmap, BARK_BITE_WDOG_PET_REG, BARK_BITE_WDOG_PET_BIT);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't pet the dog rc=%d\n", rc);
 
 	return IRQ_HANDLED;
 }
@@ -820,9 +884,6 @@ static const struct smb2_register smb2_init_seq[] = {
 	{ .addr = AICL_RERUN_TIME_CFG_REG,
 	  .mask = AICL_RERUN_TIME_MASK,
 	  .val = 0 },
-	{ .addr = USBIN_AICL_OPTIONS_CFG_REG,
-	  .mask = USBIN_AICL_START_AT_MAX_BIT | USBIN_AICL_ADC_EN_BIT,
-	  .val = 0 },
 	/*
 	* By default configure us as an upstream facing port
 	* FIXME: for OTG we should set UFP_EN_CMD_BIT and DFP_EN_CMD_BIT both to 0
@@ -846,7 +907,7 @@ static const struct smb2_register smb2_init_seq[] = {
 	  .val = VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT },
 	/* Enable automatic input current limit */
 	{ .addr = USBIN_AICL_OPTIONS_CFG_REG,
-	  .mask = USBIN_AICL_EN_BIT,
+	  .mask = USBIN_AICL_START_AT_MAX_BIT | USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT,
 	  .val = USBIN_AICL_EN_BIT },
 	{ .addr = USBIN_OPTIONS_1_CFG_REG, .mask = HVDCP_EN_BIT, .val = 0 },
 	{ .addr = CHARGING_ENABLE_CMD_REG,
@@ -858,18 +919,45 @@ static const struct smb2_register smb2_init_seq[] = {
 	{ .addr = CHGR_CFG2_REG,
 	  .mask = CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT,
 	  .val = 0 },
-	{ .addr = TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
-	  .mask = UFP_EN_CMD_BIT,
-	  .val = UFP_EN_CMD_BIT },
+	/*
+	 * No clue what this does
+	 */
+	{ .addr = STAT_CFG_REG,
+	  .mask = STAT_SW_OVERRIDE_CFG_BIT,
+	  .val = STAT_SW_OVERRIDE_CFG_BIT },
 	/*
 	 * Set the default SDP charger type to a 500ma USB 2.0 port
 	 */
 	{ .addr = USBIN_ICL_OPTIONS_REG,
 	  .mask = USB51_MODE_BIT | USBIN_MODE_CHG_BIT,
 	  .val = USB51_MODE_BIT },
+	/*
+	 * Enable watchdog
+	 */
+	{
+	  .addr = SNARL_BARK_BITE_WD_CFG_REG,
+	  .mask = BARK_WDOG_TIMEOUT_MASK,
+	  .val = 0, // 16 second timeout
+	},
+	// { .addr = WD_CFG_REG,
+	//   .mask = WATCHDOG_TRIGGER_AFP_EN_BIT | WDOG_TIMER_EN_ON_PLUGIN_BIT
+	// 	| BARK_WDOG_INT_EN_BIT,
+	//   .val = WDOG_TIMER_EN_ON_PLUGIN_BIT | BARK_WDOG_INT_EN_BIT,
+	// },
+	/*
+	 * Set pre charge current to default, the OnePlus 6 bootloader
+	 * sets this very conservatively. NOTE: seems to be reset to zero ???
+	 */
 	{ .addr = PRE_CHARGE_CURRENT_CFG_REG,
 	  .mask = PRE_CHARGE_CURRENT_SETTING_MASK,
-	  .val = 0x14 },
+	  .val = 500000 / 25000 },
+	/*
+	 * Set "fast charge current" to the default 2A, the OnePlus 6 also
+	 * sets this very conservatively. NOTE: seems to be reset to zero ???
+	 */
+	{ .addr = FAST_CHARGE_CURRENT_CFG_REG,
+	  .mask = FAST_CHARGE_CURRENT_SETTING_MASK,
+	  .addr = 1950000 / 25000 },
 };
 
 static int smb2_init_hw(struct smb2_chip *chip)
@@ -892,7 +980,6 @@ static int smb2_init_hw(struct smb2_chip *chip)
 		}
 	}
 
-	smb2_set_current_limit(chip, 500 * 1000);
 	return rc;
 }
 
@@ -921,6 +1008,20 @@ static int smb2_probe(struct platform_device *pdev)
 				     "Couldn't read base address\n");
 	}
 
+	irq = of_irq_get_byname(pdev->dev.of_node, "bat-ov");
+	if (irq < 0) {
+		return dev_err_probe(&pdev->dev, irq,
+				     "Couldn't get irq bat-ov byname\n");
+	}
+
+	rc = devm_request_threaded_irq(chip->dev, irq, NULL,
+				       smb2_handle_batt_overvoltage, IRQF_ONESHOT,
+				       "bat-ov", chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't request irq %d\n", irq);
+		return rc;
+	}
+
 	irq = of_irq_get_byname(pdev->dev.of_node, "usb-plugin");
 	if (irq < 0) {
 		return dev_err_probe(&pdev->dev, irq,
@@ -930,6 +1031,34 @@ static int smb2_probe(struct platform_device *pdev)
 	rc = devm_request_threaded_irq(chip->dev, irq, NULL,
 				       smb2_handle_usb_plugin, IRQF_ONESHOT,
 				       "usb-plugin", chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't request irq %d\n", irq);
+		return rc;
+	}
+
+	irq = of_irq_get_byname(pdev->dev.of_node, "usbin-icl-change");
+	if (irq < 0) {
+		return dev_err_probe(&pdev->dev, irq,
+				     "Couldn't get irq usbin-icl-change byname\n");
+	}
+
+	rc = devm_request_threaded_irq(chip->dev, irq, NULL,
+				       smb2_handle_usb_icl_change, IRQF_ONESHOT,
+				       "usbin-icl-change", chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't request irq %d\n", irq);
+		return rc;
+	}
+
+	irq = of_irq_get_byname(pdev->dev.of_node, "wdog-bark");
+	if (irq < 0) {
+		return dev_err_probe(&pdev->dev, irq,
+				     "Couldn't get irq wdog-bark byname\n");
+	}
+
+	rc = devm_request_threaded_irq(chip->dev, irq, NULL,
+				       smb2_handle_wdog_bark, IRQF_ONESHOT,
+				       "wdog-bark", chip);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't request irq %d\n", irq);
 		return rc;
@@ -969,17 +1098,19 @@ static int smb2_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&chip->status_change_work, smb2_status_change_work);
 
-	rc = chip->batt_info->voltage_max_design_uv;
+	rc = (chip->batt_info->voltage_max_design_uv - 3487500) / 7500 + 1;
 	rc = regmap_update_bits(chip->regmap,
 				chip->base + FLOAT_VOLTAGE_CFG_REG,
-				FLOAT_VOLTAGE_SETTING_MASK, rc / 1000);
+				FLOAT_VOLTAGE_SETTING_MASK,
+				rc);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't set vbat max rc = %d\n", rc);
 
 	platform_set_drvdata(pdev, chip);
 
 	/* trigger the IRQ to set up initial state */
-	smb2_handle_usb_plugin(irq, chip);
+	smb2_handle_usb_plugin(0, chip);
+	smb2_handle_batt_overvoltage(0, chip);
 
 	chip->debug_file = smb2_create_debugfs(chip);
 
