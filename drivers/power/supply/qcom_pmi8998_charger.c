@@ -23,6 +23,13 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 
+#define BATTERY_CHARGER_STATUS_1_REG			0x06
+#define BVR_INITIAL_RAMP_BIT				BIT(7)
+#define CC_SOFT_TERMINATE_BIT				BIT(6)
+#define STEP_CHARGING_STATUS_SHIFT			3
+#define STEP_CHARGING_STATUS_MASK			GENMASK(5, 3)
+#define BATTERY_CHARGER_STATUS_MASK			GENMASK(2, 0)
+
 #define BATTERY_CHARGER_STATUS_2_REG			0x07
 #define INPUT_CURRENT_LIMITED_BIT			BIT(7)
 #define CHARGER_ERROR_STATUS_SFT_EXPIRE_BIT		BIT(6)
@@ -92,15 +99,6 @@
 #define USBIN_UV_RT_STS_BIT				BIT(2)
 #define USBIN_LT_3P6V_RT_STS_BIT			BIT(1)
 #define USBIN_COLLAPSE_RT_STS_BIT			BIT(0)
-
-#define BATTERY_CHARGER_STATUS_1_REG			0x06
-#define BVR_INITIAL_RAMP_BIT				BIT(7)
-#define CC_SOFT_TERMINATE_BIT				BIT(6)
-#define STEP_CHARGING_STATUS_SHIFT			3
-#define STEP_CHARGING_STATUS_MASK			GENMASK(5, 3)
-#define BATTERY_CHARGER_STATUS_MASK			GENMASK(2, 0)
-
-#define BATTERY_HEALTH_STATUS_REG			0x07
 
 #define OTG_CFG_REG					0x153
 #define OTG_RESERVED_MASK				GENMASK(7, 6)
@@ -277,6 +275,12 @@
 #define USBIN_AICL_EN_BIT				BIT(2)
 #define USBIN_HV_COLLAPSE_RESPONSE_BIT			BIT(1)
 #define USBIN_LV_COLLAPSE_RESPONSE_BIT			BIT(0)
+
+#define USBIN_5V_AICL_THRESHOLD_CFG_REG			0x381
+#define USBIN_5V_AICL_THRESHOLD_CFG_MASK		GENMASK(2, 0)
+
+#define USBIN_CONT_AICL_THRESHOLD_CFG_REG		0x384
+#define USBIN_CONT_AICL_THRESHOLD_CFG_MASK		GENMASK(5, 0)
 
 #define DC_ENG_SSUPPLY_CFG2_REG				0x4C1
 #define ENG_SSUPPLY_IVREF_OTG_SS_MASK			GENMASK(2, 0)
@@ -478,7 +482,7 @@ static int smb2_apsd_get_charger_type(struct smb2_chip *chip, int *val)
 int smb2_get_prop_status(struct smb2_chip *chip, int *val)
 {
 	int usb_online_val;
-	unsigned int stat;
+	unsigned char stat[2];
 	int rc;
 
 	rc = smb2_get_prop_usb_online(chip, &usb_online_val);
@@ -493,17 +497,22 @@ int smb2_get_prop_status(struct smb2_chip *chip, int *val)
 		return rc;
 	}
 
-	rc = regmap_read(chip->regmap,
-			 chip->base + BATTERY_CHARGER_STATUS_1_REG, &stat);
+	rc = regmap_bulk_read(chip->regmap,
+			 chip->base + BATTERY_CHARGER_STATUS_1_REG, &stat, 2);
 	if (rc < 0) {
 		dev_err(chip->dev, "Failed to read charging status ret=%d\n",
 			rc);
 		return rc;
 	}
 
-	stat = stat & BATTERY_CHARGER_STATUS_MASK;
+	if (stat[1] & CHARGER_ERROR_STATUS_BAT_OV_BIT) {
+		*val = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		return 0;
+	}
 
-	switch (stat) {
+	stat[0] = stat[0] & BATTERY_CHARGER_STATUS_MASK;
+
+	switch (stat[0]) {
 	case TRICKLE_CHARGE:
 	case PRE_CHARGE:
 	case FAST_CHARGE:
@@ -763,10 +772,15 @@ static int smb2_property_is_writable(struct power_supply *psy,
 
 irqreturn_t smb2_handle_batt_overvoltage(int irq, void *data) {
 	struct smb2_chip *chip = data;
+	unsigned int status;
 
-	dev_err(chip->dev, "battery overvoltage\n");
+	regmap_read(chip->regmap,
+		    chip->base + BATTERY_CHARGER_STATUS_2_REG, &status);
 
-	power_supply_changed(chip->chg_psy);
+	if (status & CHARGER_ERROR_STATUS_BAT_OV_BIT) {
+		dev_err(chip->dev, "battery overvoltage detected, charging stopped\n");
+		power_supply_changed(chip->chg_psy);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -905,10 +919,6 @@ static const struct smb2_register smb2_init_seq[] = {
 	  .mask = SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT |
 		  VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT,
 	  .val = VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT },
-	/* Enable automatic input current limit */
-	{ .addr = USBIN_AICL_OPTIONS_CFG_REG,
-	  .mask = USBIN_AICL_START_AT_MAX_BIT | USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT,
-	  .val = USBIN_AICL_EN_BIT },
 	{ .addr = USBIN_OPTIONS_1_CFG_REG, .mask = HVDCP_EN_BIT, .val = 0 },
 	{ .addr = CHARGING_ENABLE_CMD_REG,
 	  .mask = CHARGING_ENABLE_CMD_BIT,
@@ -917,7 +927,7 @@ static const struct smb2_register smb2_init_seq[] = {
 	  .mask = ICL_OVERRIDE_AFTER_APSD_BIT,
 	  .val = ICL_OVERRIDE_AFTER_APSD_BIT },
 	{ .addr = CHGR_CFG2_REG,
-	  .mask = CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT,
+	  .mask = CHG_EN_SRC_BIT | CHG_EN_POLARITY_BIT | PRETOFAST_TRANSITION_CFG_BIT | BAT_OV_ECC_BIT | I_TERM_BIT | AUTO_RECHG_BIT | EN_ANALOG_DROP_IN_VBATT_BIT | CHARGER_INHIBIT_BIT,
 	  .val = 0 },
 	/*
 	 * No clue what this does
@@ -932,18 +942,38 @@ static const struct smb2_register smb2_init_seq[] = {
 	  .mask = USB51_MODE_BIT | USBIN_MODE_CHG_BIT,
 	  .val = USB51_MODE_BIT },
 	/*
-	 * Enable watchdog
+	 * Disable watchdog
 	 */
 	{
 	  .addr = SNARL_BARK_BITE_WD_CFG_REG,
-	  .mask = BARK_WDOG_TIMEOUT_MASK,
-	  .val = 0, // 16 second timeout
+	  .mask = 0xff,
+	  .val = 0,
 	},
-	// { .addr = WD_CFG_REG,
-	//   .mask = WATCHDOG_TRIGGER_AFP_EN_BIT | WDOG_TIMER_EN_ON_PLUGIN_BIT
-	// 	| BARK_WDOG_INT_EN_BIT,
-	//   .val = WDOG_TIMER_EN_ON_PLUGIN_BIT | BARK_WDOG_INT_EN_BIT,
-	// },
+	{ .addr = WD_CFG_REG,
+	  .mask = WATCHDOG_TRIGGER_AFP_EN_BIT | WDOG_TIMER_EN_ON_PLUGIN_BIT
+		| BARK_WDOG_INT_EN_BIT,
+	  .val = 0,
+	},
+	/* OnePlus init stuff from "op_set_collapse_fet" */
+	{ .addr = USBIN_5V_AICL_THRESHOLD_CFG_REG,
+	  .mask = USBIN_5V_AICL_THRESHOLD_CFG_MASK,
+	  .val = 0x3
+	},
+	{ .addr = USBIN_CONT_AICL_THRESHOLD_CFG_REG,
+	  .mask = USBIN_CONT_AICL_THRESHOLD_CFG_MASK,
+	  .val = 0x3
+	},
+	/* Yay undocumented registers! */
+	{ .addr = USBIN_LOAD_CFG_REG,
+	  .mask = BIT(0) | BIT(1),
+	  .val = 0x3
+	},
+	{ .addr = USBIN_AICL_OPTIONS_CFG_REG,
+	  .mask = USBIN_AICL_START_AT_MAX_BIT | USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT
+		| SUSPEND_ON_COLLAPSE_USBIN_BIT | USBIN_HV_COLLAPSE_RESPONSE_BIT
+		| USBIN_LV_COLLAPSE_RESPONSE_BIT,
+	  .val = USBIN_HV_COLLAPSE_RESPONSE_BIT | USBIN_LV_COLLAPSE_RESPONSE_BIT
+	  	| USBIN_AICL_EN_BIT, },
 	/*
 	 * Set pre charge current to default, the OnePlus 6 bootloader
 	 * sets this very conservatively. NOTE: seems to be reset to zero ???
